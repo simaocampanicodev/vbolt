@@ -14,6 +14,9 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
   const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, isAdmin, setViewProfileId } = useGame();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Calculate pending friend requests
+  const friendRequestCount = currentUser.friendRequests ? currentUser.friendRequests.length : 0;
+
   const navItems = [
     { id: 'queue', icon: Home, label: 'Hub' },
     { id: 'leaderboard', icon: BarChart2, label: 'Rankings' },
@@ -63,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                             key={item.id}
                             onClick={() => setCurrentView(item.id)}
                             className={`
-                                flex items-center px-4 py-2 rounded-2xl transition-all duration-200 text-sm font-medium
+                                flex items-center px-4 py-2 rounded-2xl transition-all duration-200 text-sm font-medium relative
                                 ${currentView === item.id 
                                     ? 'bg-rose-500/10 text-rose-500' 
                                     : 'text-zinc-500 hover:text-rose-500'}
@@ -71,6 +74,13 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                         >
                             <item.icon className="w-4 h-4 mr-2" />
                             {item.label}
+                            
+                            {/* Friend Request Badge (Desktop) */}
+                            {item.id === 'friends' && friendRequestCount > 0 && (
+                                <span className="ml-2 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center animate-pulse">
+                                    {friendRequestCount}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </nav>
@@ -131,14 +141,23 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                                 setMobileMenuOpen(false);
                             }}
                             className={`
-                                flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium
+                                flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium
                                 ${currentView === item.id 
                                     ? 'bg-rose-500/10 text-rose-500' 
                                     : 'text-zinc-500'}
                             `}
                         >
-                            <item.icon className="w-5 h-5 mr-3" />
-                            {item.label}
+                            <div className="flex items-center">
+                                <item.icon className="w-5 h-5 mr-3" />
+                                {item.label}
+                            </div>
+
+                            {/* Friend Request Badge (Mobile) */}
+                            {item.id === 'friends' && friendRequestCount > 0 && (
+                                <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {friendRequestCount}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </nav>
