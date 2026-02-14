@@ -10,7 +10,7 @@ interface QueueProps {
 }
 
 const Queue = () => {
-  const { queue, joinQueue, leaveQueue, currentUser, testFillQueue, themeMode, isAdmin } = useGame();
+  const { queue, joinQueue, leaveQueue, currentUser, testFillQueue, themeMode, isAdmin, setViewProfileId } = useGame();
   
   // We need to access the navigation function, but since it's passed via props in App.tsx or implicit via Context...
   // Actually, standardizing navigation to use the context would be cleaner, but for now we'll rely on the existing GameContext
@@ -94,7 +94,11 @@ const Queue = () => {
                  </div>
              ) : (
                  queue.map((player) => (
-                     <div key={player.id} className={`flex justify-between items-center p-4 transition-colors ${themeMode === 'dark' ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                     <div 
+                        key={player.id} 
+                        onClick={() => setViewProfileId(player.id)}
+                        className={`flex justify-between items-center p-4 transition-colors cursor-pointer ${themeMode === 'dark' ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                     >
                          <div className="flex items-center space-x-3">
                              <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center overflow-hidden text-white">
                                  {player.avatarUrl ? <img src={player.avatarUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-xs">{player.username.substring(0,1)}</span>}

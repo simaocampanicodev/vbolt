@@ -92,7 +92,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
 
-  const isAdmin = currentUser.username === 'txger.';
+  // Admin Logic Updated to Specific Email
+  const isAdmin = currentUser.email === 'simaooficiall@gmail.com';
 
   // 1. Real Firebase Listener
   // Este efeito corre automaticamente sempre que o estado de login do Google muda
@@ -122,13 +123,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             }
         } else {
             // Logout
-            setIsAuthenticated(false);
-            setPendingAuthUser(null);
-            setCurrentUser(initialUser);
+            // IMPORTANTE: Só fazemos logout automático se o user NÃO for um convidado manual
+            // IDs de convidados começam por 'guest-'
+            if (!currentUser.id.startsWith('guest-')) {
+                setIsAuthenticated(false);
+                setPendingAuthUser(null);
+                setCurrentUser(initialUser);
+            }
         }
     });
     return () => unsubscribe();
-  }, [allUsers]);
+  }, [allUsers, currentUser.id]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -279,9 +284,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     if (allUsers.find(u => u.username.toLowerCase() === data.username.toLowerCase())) {
         alert("Username taken."); return;
     }
+    
+    // Determine ID: If pendingAuthUser exists (Real Google Login), use it.
+    // Otherwise, generate a guest ID (Manual Bypass).
+    const newId = pendingAuthUser?.uid || `guest-${Date.now()}`;
+
     const newUser: User = {
         ...initialUser,
-        id: pendingAuthUser?.uid || `user-${Date.now()}`,
+        id: newId,
         email: data.email,
         username: data.username,
         primaryRole: data.primaryRole,
@@ -289,8 +299,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         topAgents: data.topAgents,
         avatarUrl: pendingAuthUser?.photoURL || undefined
     };
+    
     setAllUsers(prev => [...prev, newUser]);
-    // O useEffect do Auth vai detetar que o user já existe e logar automaticamente
+
+    // FIX: Se não houver pendingAuthUser, é um login de convidado.
+    // Temos de forçar o estado de autenticação manualmente, pois o listener do Firebase não vai disparar.
+    if (!pendingAuthUser) {
+        setCurrentUser(newUser);
+        setIsAuthenticated(true);
+    }
+    // Se houver pendingAuthUser, o useEffect do Auth vai detetar que o user já existe e logar automaticamente.
   };
 
   const logout = () => {

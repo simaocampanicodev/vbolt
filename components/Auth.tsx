@@ -59,9 +59,6 @@ const Auth = () => {
       };
       
       // We force the context to see this "pending" user
-      // Note: This relies on GameContext being able to accept this, but since we are triggering the registration flow directly,
-      // we need to set the internal state.
-      
       setStep('registration_details');
       // We store the mock user temporarily in a way accessible to submit
       (window as any).__MOCK_USER__ = mockUser;
@@ -135,8 +132,7 @@ const Auth = () => {
                  </div>
 
                  <div className="text-xs text-zinc-600 mt-2 text-center">
-                     By connecting, you agree to our Terms of Service.<br/>
-                     <span className="opacity-50 text-rose-500 font-bold">REQUER CHAVES DO FIREBASE NO CÓDIGO</span>
+                     By connecting, you agree to our Terms of Service.
                  </div>
              </div>
         )}
