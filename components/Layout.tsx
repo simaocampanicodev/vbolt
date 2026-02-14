@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { Home, BarChart2, Monitor, LogOut, History, Moon, Sun, Menu, X, ShieldAlert, Target, Users } from 'lucide-react';
+import { Home, BarChart2, Zap, LogOut, History, Moon, Sun, Menu, X, ShieldAlert, Target, Users } from 'lucide-react';
 import Button from './ui/Button';
 
 interface LayoutProps {
@@ -48,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
             )}
 
             <div className="flex items-center cursor-pointer" onClick={() => isAuthenticated && setCurrentView('queue')}>
-                <Monitor className="w-6 h-6 text-rose-500" />
+                <Zap className="w-6 h-6 text-rose-500 fill-rose-500/20" />
                 <span className={`ml-3 font-display font-bold text-xl tracking-tight hidden sm:block ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
                     HUB-PT
                 </span>
