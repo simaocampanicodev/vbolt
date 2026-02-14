@@ -92,19 +92,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
 
-  // Admin Logic Updated to Specific Email
-  const isAdmin = currentUser.email === 'simaooficiall@gmail.com';
+  // Admin Logic: Reverted to username check as requested
+  const isAdmin = currentUser.username === 'txger.';
 
   // 1. Real Firebase Listener
-  // Este efeito corre automaticamente sempre que o estado de login do Google muda
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
-            // Utilizador logado no Google. Verificar se já existe no nosso "sistema" (allUsers)
             const existingUser = allUsers.find(u => u.email === firebaseUser.email);
 
             if (existingUser) {
-                // Já existe, fazer login completo
                 const { level } = getLevelProgress(existingUser.xp || 0);
                 setCurrentUser({
                     ...existingUser,
@@ -117,14 +114,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 setIsAuthenticated(true);
                 setPendingAuthUser(null);
             } else {
-                // Novo utilizador (Logado no Google, mas sem perfil no site)
                 setPendingAuthUser(firebaseUser);
                 setIsAuthenticated(false);
             }
         } else {
-            // Logout
-            // IMPORTANTE: Só fazemos logout automático se o user NÃO for um convidado manual
-            // IDs de convidados começam por 'guest-'
             if (!currentUser.id.startsWith('guest-')) {
                 setIsAuthenticated(false);
                 setPendingAuthUser(null);
@@ -153,6 +146,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           }
       }
   }, [isAuthenticated, currentUser.id, currentUser.riotId]);
+
+  // --- AUTOMATION: Watch Ready Players & Auto Start Draft ---
+  useEffect(() => {
+    if (matchState?.phase === MatchPhase.READY_CHECK) {
+        const totalNeeded = matchState.players.length;
+        const currentReady = matchState.readyPlayers.length;
+        
+        if (currentReady >= totalNeeded) {
+            // Give a small visual delay so user sees "10/10" before switching
+            const timer = setTimeout(() => {
+                initializeDraft(matchState.players);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }
+  }, [matchState?.readyPlayers.length, matchState?.phase]);
 
   const generateQuestsIfNeeded = (forceReset: boolean = false) => {
       const today = new Date().setHours(0,0,0,0);
@@ -285,8 +294,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         alert("Username taken."); return;
     }
     
-    // Determine ID: If pendingAuthUser exists (Real Google Login), use it.
-    // Otherwise, generate a guest ID (Manual Bypass).
     const newId = pendingAuthUser?.uid || `guest-${Date.now()}`;
 
     const newUser: User = {
@@ -302,13 +309,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     
     setAllUsers(prev => [...prev, newUser]);
 
-    // FIX: Se não houver pendingAuthUser, é um login de convidado.
-    // Temos de forçar o estado de autenticação manualmente, pois o listener do Firebase não vai disparar.
     if (!pendingAuthUser) {
         setCurrentUser(newUser);
         setIsAuthenticated(true);
     }
-    // Se houver pendingAuthUser, o useEffect do Auth vai detetar que o user já existe e logar automaticamente.
   };
 
   const logout = () => {
@@ -335,7 +339,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       alert("Season Reset!");
   };
 
-  // Queue & Match Logic (Compacted)
   const joinQueue = () => {
     if (!currentUser.riotId || !currentUser.riotTag) { alert("Link Riot Account first."); return; }
     if (!queue.find(u => u.id === currentUser.id)) {
@@ -345,6 +348,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
   };
   const leaveQueue = () => setQueue(prev => prev.filter(u => u.id !== currentUser.id));
+  
   const testFillQueue = () => {
     const botsNeeded = 10 - queue.length;
     const newBots: User[] = [];
@@ -358,17 +362,29 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setQueue(finalQueue);
     if (finalQueue.length >= 10) triggerReadyCheck(finalQueue.slice(0, 10));
   };
+
   const triggerReadyCheck = (players: User[]) => {
       new Audio(MATCH_FOUND_SOUND).play().catch(() => {});
       setQueue([]); 
+
+      // Identify bots
+      const botIds = players.filter(p => p.isBot).map(p => p.id);
+
       setMatchState({
-          id: `match-${Date.now()}`, phase: MatchPhase.READY_CHECK, players, captainA: null, captainB: null, teamA: [], teamB: [], turn: 'A', remainingPool: [], remainingMaps: [], selectedMap: null, startTime: null, resultReported: false, winner: null, reportA: null, reportB: null, readyPlayers: [], readyExpiresAt: Date.now() + 60000, chat: []
+          id: `match-${Date.now()}`, 
+          phase: MatchPhase.READY_CHECK, 
+          players, 
+          captainA: null, captainB: null, teamA: [], teamB: [], turn: 'A', remainingPool: [], remainingMaps: [], selectedMap: null, startTime: null, resultReported: false, winner: null, reportA: null, reportB: null, 
+          readyPlayers: botIds, // Mark bots as ready immediately
+          readyExpiresAt: Date.now() + 60000, chat: []
       });
   };
+
   const acceptMatch = () => {
       if (!matchState || matchState.phase !== MatchPhase.READY_CHECK || matchState.readyPlayers.includes(currentUser.id)) return;
       setMatchState(prev => prev ? ({ ...prev, readyPlayers: [...prev.readyPlayers, currentUser.id] }) : null);
   };
+
   const initializeDraft = (players: User[]) => {
     let sortedPlayers = [...players].sort((a, b) => b.points - a.points);
     const captainA = sortedPlayers[0]; const captainB = sortedPlayers[1]; const pool = sortedPlayers.slice(2);
@@ -377,22 +393,39 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         return { ...prev, phase: MatchPhase.DRAFT, captainA, captainB, teamA: [captainA], teamB: [captainB], turn: 'B', remainingPool: pool, remainingMaps: [...MAPS], readyPlayers: [], chat: [{ id: 'sys-start', senderId: 'system', senderName: 'System', text: 'Draft started.', timestamp: Date.now(), isSystem: true }] };
     });
   };
+
   const sendChatMessage = (text: string) => {
       if (!matchState || !text.trim()) return;
       setMatchState(prev => prev ? ({ ...prev, chat: [...prev.chat, { id: `msg-${Date.now()}`, senderId: currentUser.id, senderName: currentUser.username, text: text.trim(), timestamp: Date.now() }] }) : null);
   };
+
+  // --- BOT ACTIONS (DRAFT & VETO) ---
   const handleBotAction = () => {
     if (!matchState) return;
-    const currentCaptain = matchState.turn === 'A' ? matchState.captainA : matchState.captainB;
-    if (!currentCaptain || currentCaptain.id === currentUser.id) return; 
+
+    const isTeamA = matchState.turn === 'A';
+    const currentCaptain = isTeamA ? matchState.captainA : matchState.captainB;
+    
+    // Only proceed if it's a Bot's turn
+    if (!currentCaptain || !currentCaptain.isBot) return;
+
     if (matchState.phase === MatchPhase.DRAFT) {
-        const randomPlayer = matchState.remainingPool[Math.floor(Math.random() * matchState.remainingPool.length)];
-        if (randomPlayer) draftPlayer(randomPlayer);
+        // Simple Bot Logic: Pick highest MMR available
+        // Or random to make it interesting
+        const pickable = matchState.remainingPool;
+        if (pickable.length > 0) {
+            const randomPlayer = pickable[Math.floor(Math.random() * pickable.length)];
+            draftPlayer(randomPlayer);
+        }
     } else if (matchState.phase === MatchPhase.VETO) {
-        const randomMap = matchState.remainingMaps[Math.floor(Math.random() * matchState.remainingMaps.length)];
-        if (randomMap) vetoMap(randomMap);
+        const bannable = matchState.remainingMaps;
+        if (bannable.length > 0) {
+            const randomMap = bannable[Math.floor(Math.random() * bannable.length)];
+            vetoMap(randomMap);
+        }
     }
   };
+
   const draftPlayer = (player: User) => {
     if (!matchState) return;
     const isTeamA = matchState.turn === 'A';
@@ -401,11 +434,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return { ...prev, teamA: isTeamA ? [...prev.teamA, player] : prev.teamA, teamB: !isTeamA ? [...prev.teamB, player] : prev.teamB, remainingPool: prev.remainingPool.filter(p => p.id !== player.id), turn: isTeamA ? 'B' : 'A', phase: prev.remainingPool.length === 1 ? MatchPhase.VETO : MatchPhase.DRAFT, chat: [...prev.chat, { id: `sys-draft-${Date.now()}`, senderId: 'system', senderName: 'System', text: `${player.username} drafted.`, timestamp: Date.now(), isSystem: true }] };
     });
   };
+
   useEffect(() => {
     if (matchState?.phase === MatchPhase.DRAFT && matchState.remainingPool.length === 0) {
        setMatchState(prev => prev ? ({ ...prev, phase: MatchPhase.VETO, turn: 'A' }) : null);
     }
   }, [matchState?.remainingPool.length]);
+
   const vetoMap = (map: GameMap) => {
     if (!matchState) return;
     setMatchState(prev => {
@@ -417,6 +452,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return { ...prev, remainingMaps: newMaps, turn: prev.turn === 'A' ? 'B' : 'A', chat: [...prev.chat, { id: `sys-veto-${Date.now()}`, senderId: 'system', senderName: 'System', text: `Map ${map} banned.`, timestamp: Date.now(), isSystem: true }] };
     });
   };
+
   const forceTimePass = () => {
     if (matchState?.phase === MatchPhase.LIVE && matchState.startTime) setMatchState({ ...matchState, startTime: Date.now() - (21 * 60 * 1000) });
   };

@@ -6,9 +6,10 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import { AGENTS, ROLES } from '../constants';
 import { GameRole } from '../types';
+import { AlertTriangle } from 'lucide-react';
 
 const Auth = () => {
-  const { completeRegistration, themeMode, pendingAuthUser, completeRegistration: manualComplete } = useGame();
+  const { completeRegistration, themeMode, pendingAuthUser, allUsers } = useGame();
   
   // Auth Flow State
   const [step, setStep] = useState<'start' | 'registration_details'>('start');
@@ -18,6 +19,7 @@ const Auth = () => {
   const [regPrimary, setRegPrimary] = useState<GameRole>(GameRole.DUELIST);
   const [regSecondary, setRegSecondary] = useState<GameRole>(GameRole.FLEX);
   const [regAgents, setRegAgents] = useState<string[]>([]);
+  const [regError, setRegError] = useState<string | null>(null);
 
   useEffect(() => {
       if (pendingAuthUser) {
@@ -41,16 +43,14 @@ const Auth = () => {
   const handleGoogleClick = async () => {
       try {
           await signInWithGoogle();
-          // Não é preciso fazer mais nada aqui. 
-          // O GameContext tem um listener (onAuthStateChanged) que vai detetar o login
-          // e atualizar o estado automaticamente.
+          // GameContext onAuthStateChanged listener handles the rest
       } catch (error) {
-          console.error("Login falhou:", error);
+          console.error("Login failed:", error);
       }
   };
 
   const handleManualBypass = () => {
-      // Mock user for Preview environments where Firebase Auth Domain fails
+      // Mock user for Preview environments
       const randomSuffix = Math.floor(Math.random() * 10000);
       const mockUser = {
           email: `guest-${randomSuffix}@valhub.pt`,
@@ -58,35 +58,40 @@ const Auth = () => {
           photoURL: null
       };
       
-      // We force the context to see this "pending" user
       setStep('registration_details');
-      // We store the mock user temporarily in a way accessible to submit
       (window as any).__MOCK_USER__ = mockUser;
       
-      // FIX: Set a unique username to avoid "Username taken" errors on re-login
       setRegUsername(`GuestPlayer${randomSuffix}`);
   };
 
   const handleRegistrationSubmit = (e: React.FormEvent) => {
       e.preventDefault();
+      setRegError(null);
       
       if (!regUsername.trim()) {
-          alert("Please enter a username.");
+          setRegError("Please enter a username.");
           return;
       }
       if (regPrimary === regSecondary) {
-          alert("Primary and Secondary roles cannot be the same.");
+          setRegError("Primary and Secondary roles cannot be the same.");
           return;
       }
       if (regAgents.length !== 3) {
-          alert("Please select exactly 3 agents.");
+          setRegError("Please select exactly 3 agents.");
+          return;
+      }
+
+      // CHECK IF USERNAME IS TAKEN
+      const isTaken = allUsers.some(u => u.username.toLowerCase() === regUsername.toLowerCase());
+      if (isTaken) {
+          setRegError("Username is already taken. Please choose another.");
           return;
       }
 
       const userToRegister = pendingAuthUser || (window as any).__MOCK_USER__;
 
       if (!userToRegister || !userToRegister.email) {
-          alert("Authentication error. Please try logging in again.");
+          setRegError("Authentication error. Please try logging in again.");
           setStep('start');
           return;
       }
@@ -200,6 +205,13 @@ const Auth = () => {
                         ))}
                     </div>
                 </div>
+
+                {regError && (
+                    <div className="flex items-center justify-center p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm">
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        {regError}
+                    </div>
+                )}
 
                 <Button type="submit" className="w-full py-4 mt-4">
                     Finish Setup

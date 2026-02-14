@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }) => {
-  const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, isAdmin } = useGame();
+  const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, isAdmin, setViewProfileId } = useGame();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
@@ -25,6 +25,11 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
   if (isAdmin) {
       navItems.push({ id: 'reports', icon: ShieldAlert, label: 'Reports' });
   }
+
+  const handleProfileClick = () => {
+      setCurrentView('profile');
+      setViewProfileId(null); // Reset to show own profile
+  };
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-500 ${themeMode === 'dark' ? 'bg-[#050505] text-zinc-200' : 'bg-zinc-50 text-zinc-800'}`}>
@@ -84,7 +89,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                 <>
                     {/* User Profile Area */}
                     <button 
-                        onClick={() => setCurrentView('profile')}
+                        onClick={handleProfileClick}
                         className={`flex items-center space-x-2 pl-2 pr-4 py-1.5 rounded-full border transition-all
                             ${currentView === 'profile' 
                                 ? 'border-rose-500 bg-rose-500/10' 

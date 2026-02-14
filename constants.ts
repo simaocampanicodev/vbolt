@@ -2,11 +2,10 @@
 import { GameMap, GameRole, Quest } from './types';
 
 export const AGENTS = [
-  'Jett', 'Raze', 'Reyna', 'Phoenix', 'Yoru', 'Neon', 'Iso', // Duelists
-  'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', // Initiators
+  'Jett', 'Raze', 'Reyna', 'Phoenix', 'Yoru', 'Neon', 'Iso', 'Waylay', // Duelists
+  'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo', // Initiators
   'Omen', 'Brimstone', 'Viper', 'Astra', 'Harbor', 'Clove', // Controllers
-  'Sage', 'Cypher', 'Killjoy', 'Chamber', 'Deadlock', 'Vyse', // Sentinels
-  'Tejo', 'Waylay', 'Veto' 
+  'Sage', 'Cypher', 'Killjoy', 'Chamber', 'Deadlock', 'Vyse', 'Veto' // Sentinels
 ];
 
 export const MAPS: GameMap[] = [

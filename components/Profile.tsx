@@ -1,11 +1,12 @@
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useGame } from '../context/GameContext';
 import { AGENTS, ROLES, AGENT_IMAGES, AGENT_BANNERS, MAP_IMAGES, MAPS } from '../constants';
 import { getRankInfo, getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle } from 'lucide-react';
+import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { GameRole } from '../types';
 
 interface BadgeType {
   id: string;
@@ -22,20 +23,45 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Determine which user to show
-  const profileUser = viewProfileId 
+  const profileUser = (viewProfileId && viewProfileId !== currentUser.id)
     ? allUsers.find(u => u.id === viewProfileId) || currentUser 
     : currentUser;
 
   const isOwnProfile = profileUser.id === currentUser.id;
-  const [isEditing, setIsEditing] = useState(false);
+  
+  // --- LOCAL STATE FOR EDITING ---
+  // We use local state to prevent "crash on empty string" and to allow validation before saving
+  const [localUsername, setLocalUsername] = useState(profileUser.username);
+  const [localPrimaryRole, setLocalPrimaryRole] = useState(profileUser.primaryRole);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+  const [isIdentityDirty, setIsIdentityDirty] = useState(false);
+
+  const [isEditingAgents, setIsEditingAgents] = useState(false);
   const [activeBadge, setActiveBadge] = useState<BadgeType | null>(null);
 
   // Riot ID Linking State
   const [riotIdInput, setRiotIdInput] = useState(profileUser.riotId || '');
   const [riotTagInput, setRiotTagInput] = useState(profileUser.riotTag || '');
   const [isLinkingRiot, setIsLinkingRiot] = useState(false);
+  const [riotError, setRiotError] = useState<string | null>(null);
 
   const [editTopAgents, setEditTopAgents] = useState<string[]>(profileUser.topAgents);
+
+  // Sync local state when profileUser changes (e.g. navigation or external updates)
+  useEffect(() => {
+    setLocalUsername(profileUser.username);
+    setLocalPrimaryRole(profileUser.primaryRole);
+    setIsIdentityDirty(false);
+    setIdentityError(null);
+    setRiotError(null);
+  }, [profileUser.id, profileUser.username, profileUser.primaryRole]);
+
+  // Check for changes
+  useEffect(() => {
+    if (!isOwnProfile) return;
+    const hasChanges = localUsername !== profileUser.username || localPrimaryRole !== profileUser.primaryRole;
+    setIsIdentityDirty(hasChanges);
+  }, [localUsername, localPrimaryRole, profileUser.username, profileUser.primaryRole, isOwnProfile]);
 
   const rank = getRankInfo(profileUser.points);
 
@@ -150,6 +176,32 @@ const Profile = () => {
     }
   };
 
+  // --- IDENTITY SAVING ---
+  const handleSaveIdentity = () => {
+    if (!localUsername.trim()) {
+        setIdentityError("Username cannot be empty.");
+        return;
+    }
+
+    // Check duplication
+    const isTaken = allUsers.some(u => 
+        u.id !== currentUser.id && 
+        u.username.toLowerCase() === localUsername.toLowerCase()
+    );
+
+    if (isTaken) {
+        setIdentityError("Username is already taken.");
+        return;
+    }
+
+    setIdentityError(null);
+    updateProfile({ 
+        username: localUsername,
+        primaryRole: localPrimaryRole
+    });
+    setIsIdentityDirty(false);
+  };
+
   const toggleAgent = (agent: string) => {
     if (editTopAgents.includes(agent)) {
       setEditTopAgents(prev => prev.filter(a => a !== agent));
@@ -160,14 +212,14 @@ const Profile = () => {
     }
   };
 
-  const saveChanges = () => {
+  const saveAgents = () => {
       updateProfile({ topAgents: editTopAgents });
-      setIsEditing(false);
+      setIsEditingAgents(false);
   };
 
-  const cancelChanges = () => {
+  const cancelAgentChanges = () => {
       setEditTopAgents(profileUser.topAgents);
-      setIsEditing(false);
+      setIsEditingAgents(false);
   };
 
   // --- RIOT INPUT HANDLERS ---
@@ -184,8 +236,21 @@ const Profile = () => {
   };
   
   const handleLinkRiot = async () => {
+      setRiotError(null);
       if (!riotIdInput.trim() || !riotTagInput.trim()) {
-          alert("Please enter both ID and Tag");
+          setRiotError("Please enter both ID and Tag");
+          return;
+      }
+
+      // Check Duplication
+      const isTaken = allUsers.some(u => 
+          u.id !== currentUser.id && 
+          u.riotId?.toLowerCase() === riotIdInput.trim().toLowerCase() && 
+          u.riotTag?.toLowerCase() === riotTagInput.trim().toLowerCase()
+      );
+
+      if (isTaken) {
+          setRiotError("This Riot Account is already linked to another user.");
           return;
       }
       
@@ -312,19 +377,19 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Quick Stats Row */}
+      {/* Quick Stats Row - Fixed Light Mode Colors */}
       <div className="grid grid-cols-3 gap-4">
-        <Card noPadding className="p-4 flex flex-col items-center justify-center bg-black/40">
+        <Card noPadding className={`p-4 flex flex-col items-center justify-center ${themeMode === 'dark' ? 'bg-black/40' : 'bg-white/40'}`}>
             <span className="text-zinc-500 text-[10px] uppercase tracking-widest mb-1">MMR</span>
-            <span className="text-2xl font-display font-bold text-white">{Math.floor(profileUser.points)}</span>
+            <span className={`text-2xl font-display font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>{Math.floor(profileUser.points)}</span>
         </Card>
-        <Card noPadding className="p-4 flex flex-col items-center justify-center bg-black/40">
+        <Card noPadding className={`p-4 flex flex-col items-center justify-center ${themeMode === 'dark' ? 'bg-black/40' : 'bg-white/40'}`}>
                 <span className="text-zinc-500 text-[10px] uppercase tracking-widest mb-1">Winrate</span>
             <span className={`text-2xl font-display font-bold ${Number(winrate) > 50 ? 'text-emerald-400' : 'text-zinc-200'}`}>{winrate}%</span>
         </Card>
-        <Card noPadding className="p-4 flex flex-col items-center justify-center bg-black/40">
+        <Card noPadding className={`p-4 flex flex-col items-center justify-center ${themeMode === 'dark' ? 'bg-black/40' : 'bg-white/40'}`}>
                 <span className="text-zinc-500 text-[10px] uppercase tracking-widest mb-1">Games Played</span>
-            <span className="text-2xl font-display font-bold text-white">{totalGames}</span>
+            <span className={`text-2xl font-display font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>{totalGames}</span>
         </Card>
       </div>
 
@@ -335,33 +400,47 @@ const Profile = () => {
             
             {/* Identity */}
             <Card>
-                <div className="flex items-center space-x-2 mb-6 text-zinc-400">
-                    <UserIcon className="w-5 h-5" />
-                    <h3 className="text-sm font-bold uppercase tracking-widest">Player Identity</h3>
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center space-x-2 text-zinc-400">
+                        <UserIcon className="w-5 h-5" />
+                        <h3 className="text-sm font-bold uppercase tracking-widest">Player Identity</h3>
+                    </div>
+                    {isOwnProfile && isIdentityDirty && (
+                        <Button size="sm" onClick={handleSaveIdentity} className="animate-in fade-in zoom-in">
+                            Save Identity
+                        </Button>
+                    )}
                 </div>
+                
                 <div className="grid grid-cols-2 gap-6">
                     <div>
                         <label className="block text-xs text-zinc-500 uppercase mb-2">Username</label>
                         <input 
                             type="text" 
-                            value={profileUser.username}
+                            value={localUsername}
                             readOnly={!isOwnProfile}
-                            onChange={(e) => isOwnProfile && updateProfile({ username: e.target.value })}
-                            className={`w-full rounded-xl p-3 bg-black/20 border border-white/10 text-white outline-none ${isOwnProfile ? 'focus:border-rose-500' : 'cursor-default opacity-70'}`}
+                            onChange={(e) => isOwnProfile && setLocalUsername(e.target.value)}
+                            className={`w-full rounded-xl p-3 border outline-none ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'} ${isOwnProfile ? 'focus:border-rose-500' : 'cursor-default opacity-70'}`}
                         />
                     </div>
                     <div>
                         <label className="block text-xs text-zinc-500 uppercase mb-2">Primary Role</label>
                         <select 
-                            value={profileUser.primaryRole}
+                            value={localPrimaryRole}
                             disabled={!isOwnProfile}
-                            onChange={(e) => updateProfile({ primaryRole: e.target.value as any })}
-                            className={`w-full rounded-xl p-3 bg-zinc-900 border border-white/10 text-white outline-none appearance-none ${!isOwnProfile ? 'cursor-default opacity-70' : 'focus:border-rose-500'}`}
+                            onChange={(e) => isOwnProfile && setLocalPrimaryRole(e.target.value as GameRole)}
+                            className={`w-full rounded-xl p-3 border outline-none appearance-none ${themeMode === 'dark' ? 'bg-zinc-900 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'} ${!isOwnProfile ? 'cursor-default opacity-70' : 'focus:border-rose-500'}`}
                         >
                             {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                     </div>
                 </div>
+                {identityError && (
+                    <div className="mt-4 flex items-center text-xs text-rose-500 bg-rose-500/10 p-2 rounded-lg">
+                        <AlertTriangle className="w-3 h-3 mr-2" />
+                        {identityError}
+                    </div>
+                )}
             </Card>
 
             {/* Riot ID Linking (Own Profile Only) */}
@@ -378,10 +457,10 @@ const Profile = () => {
                      </div>
 
                      {profileUser.riotId && !isLinkingRiot ? (
-                         <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                             <span className="text-white font-bold text-lg">{profileUser.riotId}<span className="text-zinc-500">#{profileUser.riotTag}</span></span>
+                         <div className={`flex items-center justify-between p-4 rounded-xl border ${themeMode === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
+                             <span className={`${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'} font-bold text-lg`}>{profileUser.riotId}<span className="text-zinc-500">#{profileUser.riotTag}</span></span>
                              <span className="text-xs text-emerald-500 font-bold uppercase flex items-center bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                                <CheckCircle className="w-3 h-3 mr-1"/> Verified
+                                <CheckCircle className="w-3 h-3 ml-1"/> Verified
                              </span>
                          </div>
                      ) : (
@@ -394,7 +473,7 @@ const Profile = () => {
                                      <div className="flex-1 relative">
                                         <input 
                                             placeholder="Game Name" 
-                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-rose-500 transition-colors"
+                                            className={`w-full border rounded-xl p-3 outline-none focus:border-rose-500 transition-colors ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
                                             value={riotIdInput}
                                             onChange={handleRiotNameChange}
                                         />
@@ -404,13 +483,21 @@ const Profile = () => {
                                      <div className="w-28 relative">
                                         <input 
                                             placeholder="TAG" 
-                                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-rose-500 transition-colors"
+                                            className={`w-full border rounded-xl p-3 outline-none focus:border-rose-500 transition-colors ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
                                             value={riotTagInput}
                                             onChange={handleRiotTagChange}
                                         />
                                         <span className="absolute right-2 top-3 text-[10px] text-zinc-600">{riotTagInput.length}/5</span>
                                      </div>
                                  </div>
+
+                                 {riotError && (
+                                    <div className="flex items-center text-xs text-rose-500 bg-rose-500/10 p-2 rounded-lg">
+                                        <AlertTriangle className="w-3 h-3 mr-2" />
+                                        {riotError}
+                                    </div>
+                                 )}
+
                                  <div className="flex gap-2">
                                      <Button variant="ghost" className="flex-1" onClick={() => setIsLinkingRiot(false)}>Cancel</Button>
                                      <Button className="flex-1" onClick={handleLinkRiot}>
@@ -429,30 +516,30 @@ const Profile = () => {
             <Card className="h-auto">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Agent Pool</h3>
-                    {isOwnProfile && !isEditing && (
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(true)}>
+                    {isOwnProfile && !isEditingAgents && (
+                        <Button size="sm" variant="ghost" onClick={() => setIsEditingAgents(true)}>
                             <Edit2 className="w-3 h-3" />
                         </Button>
                     )}
-                    {isEditing && (
+                    {isEditingAgents && (
                         <div className="flex space-x-2">
-                            <Button size="sm" variant="ghost" onClick={cancelChanges}>
+                            <Button size="sm" variant="ghost" onClick={cancelAgentChanges}>
                                 <X className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="primary" onClick={saveChanges}>
+                            <Button size="sm" variant="primary" onClick={saveAgents}>
                                 <Save className="w-3 h-3" />
                             </Button>
                         </div>
                     )}
                 </div>
                 
-                {!isEditing ? (
+                {!isEditingAgents ? (
                     <div className="grid grid-cols-1 gap-3">
                         {profileUser.topAgents.map((agent, index) => (
-                            <div key={agent} className="relative overflow-hidden rounded-xl border border-white/5 bg-white/5 p-3 flex items-center transition-all hover:bg-white/10">
+                            <div key={agent} className={`relative overflow-hidden rounded-xl border p-3 flex items-center transition-all ${themeMode === 'dark' ? 'border-white/5 bg-white/5 hover:bg-white/10' : 'border-black/5 bg-black/5 hover:bg-black/10'}`}>
                                 <img src={AGENT_IMAGES[agent]} alt={agent} className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 object-cover mr-4" />
                                 <div>
-                                    <span className="block text-sm font-bold text-white">{agent}</span>
+                                    <span className={`block text-sm font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>{agent}</span>
                                     <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{index === 0 ? 'Main' : 'Pick'}</span>
                                 </div>
                             </div>
@@ -466,7 +553,11 @@ const Profile = () => {
                                 <button
                                     key={agent}
                                     onClick={() => toggleAgent(agent)}
-                                    className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 aspect-square ${editTopAgents.includes(agent) ? `bg-rose-500/20 border-rose-500` : `border-transparent bg-white/5 hover:bg-white/10`}`}
+                                    className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 aspect-square 
+                                        ${editTopAgents.includes(agent) 
+                                            ? `bg-rose-500/20 border-rose-500` 
+                                            : `border-transparent ${themeMode === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
+                                    `}
                                 >
                                     <img src={AGENT_IMAGES[agent]} alt={agent} className="w-8 h-8 rounded-full mb-1" />
                                     <span className={`text-[9px] font-bold ${editTopAgents.includes(agent) ? 'text-rose-400' : 'text-zinc-500'}`}>{agent}</span>
@@ -564,7 +655,7 @@ const Profile = () => {
                     <div className={`p-4 rounded-full mb-3 transition-shadow duration-300 ${badge.active ? `${badge.glowColor} shadow-[0_0_10px_rgba(0,0,0,0)]` : 'bg-white/5'}`}>
                         {React.cloneElement(badge.icon as React.ReactElement<{ className?: string }>, { className: "w-8 h-8" })}
                     </div>
-                    <span className={`text-sm font-bold truncate w-full ${badge.active ? 'text-white' : 'text-zinc-500'}`}>{badge.name}</span>
+                    <span className={`text-sm font-bold truncate w-full ${badge.active ? (themeMode === 'dark' ? 'text-white' : 'text-zinc-800') : 'text-zinc-500'}`}>{badge.name}</span>
                 </button>
             ))}
         </div>
