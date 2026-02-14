@@ -333,12 +333,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         lastMonthlyQuestGeneration: Date.now()
     };
     
-    setAllUsers(prev => [...prev, newUser]);
+    // Immediately update allUsers and force the current state
+    setAllUsers(prev => {
+        const updated = [...prev, newUser];
+        allUsersRef.current = updated; // Sync ref immediately for auth checks
+        return updated;
+    });
 
-    if (!pendingAuthUser) {
-        setCurrentUser(newUser);
-        setIsAuthenticated(true);
-    }
+    setCurrentUser(newUser);
+    setIsAuthenticated(true);
+    setPendingAuthUser(null);
   };
 
   const logout = () => {

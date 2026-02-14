@@ -77,7 +77,10 @@ const Leaderboard = () => {
                                 </div>
                             </td>
                             <td className="p-4">
-                                <span className={`text-xs px-2 py-1 rounded-md border ${themeMode === 'dark' ? 'bg-black/40 border-white/5' : 'bg-white border-black/5'}`} style={{ color: rankInfo.color }}>
+                                <span 
+                                    className={`text-xs px-2 py-1 rounded-md border ${themeMode === 'dark' ? 'bg-black/40 border-white/5' : 'bg-zinc-800 border-black/5'}`} 
+                                    style={{ color: rankInfo.color }}
+                                >
                                     {rankInfo.name}
                                 </span>
                             </td>
