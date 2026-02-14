@@ -189,9 +189,10 @@ const MatchInterface = () => {
   }
 
   // --- MAIN LAYOUT ---
-  // Force screen height to avoid scrolling during drafting/veto
+  // STRICT Height Calculation to prevent Body Scroll: 100vh - Header(80px) - Padding(approx 100px total vert)
+  // We use 180px buffer. 
   return (
-    <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto h-[calc(100vh-140px)] overflow-hidden`}>
+    <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto h-[calc(100vh-180px)] overflow-hidden`}>
         
         {/* Report Modal */}
         {reportModalOpen && (
@@ -244,7 +245,7 @@ const MatchInterface = () => {
             
             {/* --- PHASE: DRAFT (LOCKED LAYOUT) --- */}
             {matchState.phase === MatchPhase.DRAFT && (
-                <div className="h-full flex flex-col animate-in fade-in duration-500">
+                <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
                     {/* Header Fixed Height */}
                     <div className="flex-none h-24 flex flex-col justify-center items-center text-center space-y-1 mb-2">
                         <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Player Draft</h2>
@@ -344,7 +345,7 @@ const MatchInterface = () => {
 
             {/* --- PHASE: VETO (LOCKED LAYOUT) --- */}
             {matchState.phase === MatchPhase.VETO && (
-                <div className="h-full flex flex-col animate-in fade-in duration-500">
+                <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
                     <div className="flex-none h-24 flex flex-col justify-center items-center text-center space-y-1 mb-2">
                         <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Map Veto</h2>
                         <div className="h-6 flex items-center justify-center w-full">
@@ -394,11 +395,11 @@ const MatchInterface = () => {
                 </div>
             )}
 
-            {/* --- PHASE: LIVE (SCROLLABLE IF NEEDED) --- */}
+            {/* --- PHASE: LIVE (FIXED LAYOUT WITH SCROLLABLE CONTENT AREAS) --- */}
             {matchState.phase === MatchPhase.LIVE && (
-                <div className="h-full overflow-y-auto custom-scrollbar space-y-8 animate-in fade-in duration-700 max-w-5xl mx-auto w-full p-2">
-                        {/* Map Header Card */}
-                        <div className="relative rounded-3xl overflow-hidden border border-white/5 h-auto py-8 md:h-48 flex flex-col md:flex-row items-center justify-between px-8 bg-black shrink-0">
+                <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-700 max-w-5xl mx-auto w-full p-2 overflow-hidden">
+                        {/* Map Header Card - FIXED HEIGHT */}
+                        <div className="relative rounded-3xl overflow-hidden border border-white/5 h-auto py-6 md:h-40 flex flex-col md:flex-row items-center justify-between px-8 bg-black shrink-0">
                             {matchState.selectedMap && (
                                 <div 
                                     className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 pointer-events-none"
@@ -407,29 +408,29 @@ const MatchInterface = () => {
                             )}
                             <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 via-black/40 to-rose-900/80 pointer-events-none"></div>
 
-                            <div className="relative z-10 text-center w-full md:w-1/3 mb-4 md:mb-0">
-                                <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainA?.username.toUpperCase()}</h2>
+                            <div className="relative z-10 text-center w-full md:w-1/3 mb-2 md:mb-0">
+                                <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainA?.username.toUpperCase()}</h2>
                                 <p className="text-emerald-400 text-xs md:text-sm uppercase tracking-widest font-bold shadow-black drop-shadow-md">Attack</p>
                             </div>
                             
-                            <div className="relative z-10 text-center w-full md:w-1/3 flex flex-col items-center mb-4 md:mb-0 order-first md:order-none">
-                                <span className="text-xs text-zinc-300 uppercase tracking-widest mb-2 font-semibold shadow-black drop-shadow-md">Map</span>
-                                <span className="text-xl md:text-2xl font-display font-bold text-white mb-4 shadow-black drop-shadow-lg">{matchState.selectedMap}</span>
-                                <div className="flex items-center space-x-2 bg-black/60 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
-                                    <Clock className="w-4 h-4 text-zinc-400" />
-                                    <span className="font-mono text-lg md:text-xl text-white">{formatTime(timeLeft)}</span>
+                            <div className="relative z-10 text-center w-full md:w-1/3 flex flex-col items-center mb-2 md:mb-0 order-first md:order-none">
+                                <span className="text-xs text-zinc-300 uppercase tracking-widest mb-1 font-semibold shadow-black drop-shadow-md">Map</span>
+                                <span className="text-lg md:text-xl font-display font-bold text-white mb-2 shadow-black drop-shadow-lg">{matchState.selectedMap}</span>
+                                <div className="flex items-center space-x-2 bg-black/60 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+                                    <Clock className="w-3 h-3 text-zinc-400" />
+                                    <span className="font-mono text-base text-white">{formatTime(timeLeft)}</span>
                                 </div>
                             </div>
 
                             <div className="relative z-10 text-center w-full md:w-1/3">
-                                <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainB?.username.toUpperCase()}</h2>
+                                <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainB?.username.toUpperCase()}</h2>
                                 <p className="text-rose-400 text-xs md:text-sm uppercase tracking-widest font-bold shadow-black drop-shadow-md">Defense</p>
                             </div>
                         </div>
 
-                        {/* Players List Grid (Centered on Mobile) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
-                            <div className="space-y-2">
+                        {/* Players List Grid (Fixed, only internal scroll if needed) */}
+                        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 min-h-0">
+                            <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2">
                                 <div className="md:hidden text-center text-emerald-500 font-bold uppercase tracking-widest text-xs mb-2">Team {matchState.captainA?.username}</div>
                                 {matchState.teamA.map(player => (
                                     <div key={player.id} className="flex items-center justify-between p-3 border-b border-emerald-500/10 bg-emerald-500/5 md:bg-transparent rounded-lg md:rounded-none">
@@ -438,7 +439,7 @@ const MatchInterface = () => {
                                     </div>
                                 ))}
                             </div>
-                            <div className="space-y-2 md:text-right">
+                            <div className="space-y-2 md:text-right overflow-y-auto custom-scrollbar pl-2">
                                 <div className="md:hidden text-center text-rose-500 font-bold uppercase tracking-widest text-xs mb-2 mt-4">Team {matchState.captainB?.username}</div>
                                 {matchState.teamB.map(player => (
                                     <div key={player.id} className="flex items-center justify-between md:flex-row-reverse p-3 border-b border-rose-500/10 bg-rose-500/5 md:bg-transparent rounded-lg md:rounded-none">
@@ -449,8 +450,9 @@ const MatchInterface = () => {
                             </div>
                         </div>
 
-                        <Card className="flex flex-col items-center space-y-6 py-12 shrink-0">
-                            <h3 className="uppercase tracking-widest text-zinc-400">Match Control</h3>
+                        {/* Match Control - SCROLLABLE CONTENT IF NEEDED, FIXED POSITION */}
+                        <Card className="flex flex-col items-center space-y-4 py-6 shrink-0 max-h-[250px] overflow-y-auto custom-scrollbar">
+                            <h3 className="uppercase tracking-widest text-zinc-400 text-xs">Match Control</h3>
                             
                             {!canReport ? (
                                 <div className="flex flex-col items-center space-y-2">
@@ -471,17 +473,17 @@ const MatchInterface = () => {
                                                     type="number"
                                                     value={scoreA}
                                                     onChange={(e) => setScoreA(e.target.value)}
-                                                    className={`w-20 h-20 text-center text-4xl font-bold rounded-2xl outline-none border focus:border-rose-500 ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
+                                                    className={`w-16 h-16 text-center text-3xl font-bold rounded-2xl outline-none border focus:border-rose-500 ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
                                                 />
                                             </div>
-                                            <span className="text-2xl text-zinc-500 font-bold">:</span>
+                                            <span className="text-xl text-zinc-500 font-bold">:</span>
                                             <div className="flex flex-col items-center">
                                                 <span className="text-xs text-zinc-500 mb-1">Team {matchState.captainB?.username}</span>
                                                 <input 
                                                     type="number"
                                                     value={scoreB}
                                                     onChange={(e) => setScoreB(e.target.value)}
-                                                    className={`w-20 h-20 text-center text-4xl font-bold rounded-2xl outline-none border focus:border-rose-500 ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
+                                                    className={`w-16 h-16 text-center text-3xl font-bold rounded-2xl outline-none border focus:border-rose-500 ${themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-zinc-100 border-zinc-200 text-black'}`}
                                                 />
                                             </div>
                                     </div>
@@ -495,7 +497,7 @@ const MatchInterface = () => {
 
                                     <Button 
                                         variant="primary" 
-                                        className="w-full mt-4"
+                                        className="w-full mt-2"
                                         onClick={handleReportSubmit}
                                     >
                                         Submit Result

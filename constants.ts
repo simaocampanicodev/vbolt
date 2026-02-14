@@ -70,12 +70,37 @@ export const AGENT_IMAGES: Record<string, string> = {
 };
 
 // Agent Banner Images (Full Art)
+const DEFAULT_BANNER = "https://static.wikia.nocookie.net/valorant-lore/images/2/24/Jett_-_Full_body.png";
+
 export const AGENT_BANNERS: Record<string, string> = {
-    'Jett': 'https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e3b8db388e27/fullportrait.png',
-    'Reyna': 'https://media.valorant-api.com/agents/a3bf58c7-4430-eee7-380a-fd8bdf520b77/fullportrait.png',
-    'Raze': 'https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/fullportrait.png',
-    'Omen': 'https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/fullportrait.png',
-    // Fallback for others
+    'Jett': 'https://static.wikia.nocookie.net/valorant-lore/images/2/24/Jett_-_Full_body.png',
+    'Reyna': 'https://static.wikia.nocookie.net/valorant/images/3/36/Reyna_Artwork_Full.png',
+    'Raze': 'https://static.wikia.nocookie.net/valorant-lore/images/b/bb/Raze_-_Full_body.png',
+    'Omen': 'https://static.wikia.nocookie.net/valorant-lore/images/d/dc/Omen_-_Full_body.png',
+    'Phoenix': 'https://static.wikia.nocookie.net/valorant/images/9/90/Phoenix_Artwork_Full.png',
+    'Yoru': 'https://static.wikia.nocookie.net/valorant-lore/images/2/27/Yoru_-_Full_body.png',
+    'Neon': 'https://static.wikia.nocookie.net/valorant-lore/images/0/0f/Neon_-_Full_body.png',
+    'Iso': 'https://static.wikia.nocookie.net/valorant-lore/images/8/8a/Iso_-_Full_body.png',
+    'Sova': 'https://static.wikia.nocookie.net/valorant/images/c/c5/Sova_Artwork_Full.png',
+    'Breach': 'https://static.wikia.nocookie.net/valorant/images/2/24/Breach_Artwork_Full.png',
+    'Skye': 'https://static.wikia.nocookie.net/valorant-lore/images/0/06/Skye_-_Full_body.png',
+    'KAY/O': 'https://static.wikia.nocookie.net/valorant-lore/images/b/bb/KAY_O_-_Full_body.png',
+    'Brimstone': 'https://static.wikia.nocookie.net/valorant/images/8/81/Brimstone_Artwork_Full.png',
+    'Viper': 'https://static.wikia.nocookie.net/valorant-lore/images/c/c8/Viper_-_Full_body.png',
+    'Astra': 'https://static.wikia.nocookie.net/valorant/images/e/e0/Astra_Artwork_Full.png',
+    'Sage': 'https://static.wikia.nocookie.net/valorant-lore/images/3/37/Sage_-_Full_body.png',
+    'Cypher': 'https://static.wikia.nocookie.net/valorant/images/5/55/Cypher_Artwork_Full.png',
+    'Killjoy': 'https://static.wikia.nocookie.net/valorant-lore/images/9/99/Killjoy_-_Full_body.png',
+    'Chamber': 'https://static.wikia.nocookie.net/valorant/images/5/5d/Chamber_Artwork_Full.png',
+    'Gekko': 'https://static.wikia.nocookie.net/valorant-lore/images/2/27/Gekko_-_Full_body.png',
+    'Harbor': 'https://static.wikia.nocookie.net/valorant-lore/images/8/8a/Harbor_-_Full_body.png',
+    'Fade': 'https://static.wikia.nocookie.net/valorant-lore/images/2/2e/Fade_-_Full_Body.png',
+    'Deadlock': 'https://static.wikia.nocookie.net/valorant/images/a/aa/Deadlock_Artwork_Full.png',
+    'Clove': 'https://static.wikia.nocookie.net/valorant-lore/images/1/15/Clove_-_Full_body.png',
+    'Tejo': 'https://static.wikia.nocookie.net/valorant/images/c/cc/Tejo_Artwork_Full.png',
+    'Waylay': 'https://static.wikia.nocookie.net/valorant/images/4/4f/Waylay_Artwork_Full.png',
+    'Vyse': 'https://static.wikia.nocookie.net/valorant-lore/images/f/f8/Vyse_-_Full_body.png',
+    'Veto': 'https://static.wikia.nocookie.net/valorant-lore/images/c/c2/Veto_-_Full_body.png'
 };
 
 export const ROLES: GameRole[] = [

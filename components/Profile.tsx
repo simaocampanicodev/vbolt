@@ -37,6 +37,8 @@ const Profile = () => {
   const [isIdentityDirty, setIsIdentityDirty] = useState(false);
 
   const [isEditingAgents, setIsEditingAgents] = useState(false);
+  const [editTopAgents, setEditTopAgents] = useState<string[]>(profileUser.topAgents);
+  const [agentError, setAgentError] = useState<string | null>(null);
   const [activeBadge, setActiveBadge] = useState<BadgeType | null>(null);
 
   // Riot ID Linking State
@@ -45,8 +47,6 @@ const Profile = () => {
   const [isLinkingRiot, setIsLinkingRiot] = useState(false);
   const [riotError, setRiotError] = useState<string | null>(null);
 
-  const [editTopAgents, setEditTopAgents] = useState<string[]>(profileUser.topAgents);
-
   // Sync local state when profileUser changes (e.g. navigation or external updates)
   useEffect(() => {
     setLocalUsername(profileUser.username);
@@ -54,6 +54,7 @@ const Profile = () => {
     setIsIdentityDirty(false);
     setIdentityError(null);
     setRiotError(null);
+    setAgentError(null);
   }, [profileUser.id, profileUser.username, profileUser.primaryRole]);
 
   // Check for changes
@@ -203,6 +204,7 @@ const Profile = () => {
   };
 
   const toggleAgent = (agent: string) => {
+    setAgentError(null); // Clear error on interaction
     if (editTopAgents.includes(agent)) {
       setEditTopAgents(prev => prev.filter(a => a !== agent));
     } else {
@@ -213,12 +215,18 @@ const Profile = () => {
   };
 
   const saveAgents = () => {
+      if (editTopAgents.length !== 3) {
+          setAgentError("Please select exactly 3 agents.");
+          return;
+      }
+      setAgentError(null);
       updateProfile({ topAgents: editTopAgents });
       setIsEditingAgents(false);
   };
 
   const cancelAgentChanges = () => {
       setEditTopAgents(profileUser.topAgents);
+      setAgentError(null);
       setIsEditingAgents(false);
   };
 
@@ -522,6 +530,7 @@ const Profile = () => {
                             variant="ghost" 
                             onClick={() => {
                                 setEditTopAgents(profileUser.topAgents);
+                                setAgentError(null);
                                 setIsEditingAgents(true);
                             }}
                         >
@@ -571,6 +580,12 @@ const Profile = () => {
                                 </button>
                             ))}
                         </div>
+                        {agentError && (
+                            <div className="mt-4 flex items-center text-xs text-rose-500 bg-rose-500/10 p-2 rounded-lg">
+                                <AlertTriangle className="w-3 h-3 mr-2" />
+                                {agentError}
+                            </div>
+                        )}
                     </div>
                 )}
             </Card>

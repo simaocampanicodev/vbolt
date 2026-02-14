@@ -77,7 +77,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                             
                             {/* Friend Request Badge (Desktop) */}
                             {item.id === 'friends' && friendRequestCount > 0 && (
-                                <span className="ml-2 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center animate-pulse">
+                                <span className="ml-2 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full grid place-items-center leading-none animate-pulse">
                                     {friendRequestCount}
                                 </span>
                             )}
@@ -166,8 +166,8 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
 
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 relative w-full max-w-7xl mx-auto p-4 lg:p-12">
+      {/* Main Content - Reduced Padding to help fixed height calc */}
+      <main className="flex-1 relative w-full max-w-7xl mx-auto p-4 lg:py-8 lg:px-12">
         {/* Background Gradients */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
              {themeMode === 'dark' && (

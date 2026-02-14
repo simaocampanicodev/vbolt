@@ -385,16 +385,26 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const leaveQueue = () => setQueue(prev => prev.filter(u => u.id !== currentUser.id));
   
   const testFillQueue = () => {
-    const botsNeeded = 10 - queue.length;
+    // 1. Ensure current user is in queue (if not already)
+    let currentQueue = [...queue];
+    if (!currentQueue.find(u => u.id === currentUser.id)) {
+        currentQueue.push(currentUser);
+    }
+
+    const botsNeeded = 10 - currentQueue.length;
     const newBots: User[] = [];
+    
     for (let i = 0; i < botsNeeded; i++) {
-      const bot = generateBot(`test-${Date.now()}-${i}`);
+      // Generate bots with very low MMR (0-500) so the Admin (usually 1000+) is always top seeded (Captain)
+      const bot = generateBot(`test-${Date.now()}-${i}`, 250); 
       bot.riotId = bot.username.split('#')[0]; bot.riotTag = 'BOT';
       newBots.push(bot);
     }
+
     setAllUsers(prev => [...prev, ...newBots]);
-    const finalQueue = [...queue, ...newBots];
+    const finalQueue = [...currentQueue, ...newBots];
     setQueue(finalQueue);
+    
     if (finalQueue.length >= 10) triggerReadyCheck(finalQueue.slice(0, 10));
   };
 
