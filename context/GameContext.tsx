@@ -113,20 +113,37 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
-  // 🔥 LISTENER: Queue
+  // 🔥 LISTENER: Queue (COM LOGS DETALHADOS)
   useEffect(() => {
     console.log('🎮 Listener de queue iniciado');
     const unsubscribe = onSnapshot(collection(db, COLLECTIONS.QUEUE), (snapshot) => {
+      console.log(`🎮 Queue snapshot: ${snapshot.size} documentos`);
+      
+      snapshot.docs.forEach(doc => {
+        console.log('  -', doc.id, doc.data());
+      });
+      
       const queueUsers = snapshot.docs.map(doc => doc.id)
         .map(id => allUsersRef.current.find(u => u.id === id))
         .filter(Boolean) as User[];
+      
+      console.log(`🎮 Queue processada: ${queueUsers.length} usuários`);
+      console.log('  -', queueUsers.map(u => u.username));
+      
       setQueue(queueUsers);
-      console.log(`🎮 Queue: ${queueUsers.length}/10`);
+      
       if (queueUsers.length >= 10 && !currentMatchIdRef.current) {
+        console.log('⚡ 10 JOGADORES! Criando match...');
         createMatch(queueUsers.slice(0, 10));
       }
+    }, (error) => {
+      console.error('❌ Erro no listener de queue:', error);
     });
-    return () => unsubscribe();
+    
+    return () => {
+      console.log('🚪 Listener de queue desconectado');
+      unsubscribe();
+    };
   }, []);
 
   // 🔥 LISTENER: Active Match
@@ -178,15 +195,107 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, [isAuthenticated, currentUser.id]);
 
-  // 🔥 LISTENER: Friend Requests
+  // 🔥 LISTENER: Perfil Completo do Usuário (CORREÇÃO 1 - Friends instantâneos)
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id || currentUser.id === 'user-1') return;
+    
+    console.log('👥 Listener de perfil iniciado');
+    
     const unsubscribe = onSnapshot(doc(db, COLLECTIONS.USERS, currentUser.id), (snap) => {
       if (snap.exists()) {
-        setCurrentUser(prev => ({ ...prev, friendRequests: snap.data().friend_requests || [] }));
+        const data = snap.data();
+        console.log('👥 Perfil atualizado:', {
+          friends: data.friends?.length,
+          friendRequests: data.friend_requests?.length,
+          avatarUrl: data.avatarUrl,
+          username: data.username
+        });
+        
+        setCurrentUser(prev => ({
+          ...prev,
+          friends: data.friends || [],
+          friendRequests: data.friend_requests || [],
+          avatarUrl: data.avatarUrl,
+          username: data.username,
+          points: data.points,
+          wins: data.wins,
+          losses: data.losses,
+          winstreak: data.winstreak,
+          reputation: data.reputation
+        }));
       }
     });
+    
     return () => unsubscribe();
+  }, [isAuthenticated, currentUser.id]);
+
+  // ⭐ CORREÇÃO 2: Sync de Avatar Throttled (30 segundos)
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id || currentUser.id === 'user-1') return;
+    
+    const syncAvatar = async () => {
+      const firebaseAvatar = auth.currentUser?.photoURL;
+      
+      if (firebaseAvatar && firebaseAvatar !== currentUser.avatarUrl) {
+        console.log('🖼️ Sincronizando avatar do Firebase...');
+        await updateProfile({ avatarUrl: firebaseAvatar });
+      }
+    };
+    
+    syncAvatar();
+    const interval = setInterval(syncAvatar, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, currentUser.id]);
+
+  // ⭐ CORREÇÃO 3: Auto-remover da Queue ao Sair
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id) return;
+    
+    const handleBeforeUnload = async () => {
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.QUEUE, currentUser.id));
+        console.log('🚪 Removido da queue ao sair');
+      } catch (error) {
+        // Ignora erro
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      handleBeforeUnload();
+    };
+  }, [isAuthenticated, currentUser.id]);
+
+  // ⭐ CORREÇÃO 3b: Remover da Queue por Inatividade
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id) return;
+    
+    let visibilityTimeout: NodeJS.Timeout;
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        visibilityTimeout = setTimeout(async () => {
+          try {
+            await deleteDoc(doc(db, COLLECTIONS.QUEUE, currentUser.id));
+            console.log('🚪 Removido da queue por inatividade');
+          } catch (error) {
+            // Ignora
+          }
+        }, 30000);
+      } else {
+        clearTimeout(visibilityTimeout);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearTimeout(visibilityTimeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isAuthenticated, currentUser.id]);
 
   // 🔥 Firebase Auth
@@ -197,7 +306,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const existingUser = allUsersRef.current.find(u => u.email === firebaseUser.email);
           if (existingUser) {
             const { level } = getLevelProgress(existingUser.xp || 0);
-            setCurrentUser({ ...existingUser, level, activeQuests: existingUser.activeQuests || [], friends: existingUser.friends || [], friendRequests: existingUser.friendRequests || [] });
+            setCurrentUser({ ...existingUser, level });
             setIsAuthenticated(true);
             setPendingAuthUser(null);
           } else {
@@ -223,30 +332,77 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [matchState?.readyPlayers?.length, matchState?.phase]);
 
-  // ⭐ CREATE MATCH
+  // ⭐ CORREÇÃO 5: CREATE MATCH (com debug completo)
   const createMatch = async (players: User[]) => {
     try {
+      console.log('🎮 === CRIANDO MATCH ===');
+      console.log('🎮 Players:', players.map(p => p.username));
+      
       const matchId = `match_${Date.now()}`;
+      console.log('🎮 Match ID:', matchId);
+      
       const playersData: any = {};
       players.forEach(p => {
-        playersData[p.id] = { username: p.username, avatarUrl: p.avatarUrl, primaryRole: p.primaryRole, points: p.points };
+        playersData[p.id] = {
+          username: p.username,
+          avatarUrl: p.avatarUrl,
+          primaryRole: p.primaryRole,
+          points: p.points
+        };
       });
+      
       const botIds = players.filter(p => p.isBot).map(p => p.id);
-      await setDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchId), {
-        id: matchId, phase: MatchPhase.READY_CHECK, players: players.map(p => p.id), playersData,
-        readyPlayers: botIds, readyExpiresAt: Timestamp.fromMillis(Date.now() + 60000),
-        chat: [{ id: 'sys-start', senderId: 'system', senderName: 'System', text: 'Match found! Accept to join.', timestamp: Date.now(), isSystem: true }],
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(), resultReported: false
+      console.log('🤖 Bots (auto-ready):', botIds);
+      
+      const matchData = {
+        id: matchId,
+        phase: MatchPhase.READY_CHECK,
+        players: players.map(p => p.id),
+        playersData: playersData,
+        readyPlayers: botIds,
+        readyExpiresAt: Timestamp.fromMillis(Date.now() + 60000),
+        chat: [{
+          id: 'sys-start',
+          senderId: 'system',
+          senderName: 'System',
+          text: 'Match found! Click Accept to join.',
+          timestamp: Date.now(),
+          isSystem: true
+        }],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        resultReported: false
+      };
+      
+      console.log('💾 Salvando match no Firestore...');
+      const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchId);
+      await setDoc(matchRef, matchData);
+      console.log('✅ Match criada no Firestore!');
+      
+      try {
+        new Audio(MATCH_FOUND_SOUND).play();
+        console.log('🔊 Som tocado');
+      } catch (e) {
+        console.log('⚠️ Erro ao tocar som:', e);
+      }
+      
+      console.log('🗑️ Removendo jogadores da queue...');
+      const deletePromises = players.map(p => {
+        console.log('  - Removendo', p.username);
+        return deleteDoc(doc(db, COLLECTIONS.QUEUE, p.id));
       });
-      await Promise.all(players.map(p => deleteDoc(doc(db, COLLECTIONS.QUEUE, p.id))));
-      new Audio(MATCH_FOUND_SOUND).play().catch(() => {});
-      console.log('✅ Match criada:', matchId);
+      
+      await Promise.all(deletePromises);
+      console.log('✅ Queue limpa!');
+      console.log('🎮 === MATCH CRIADA COM SUCESSO ===');
+      
     } catch (error) {
-      console.error('❌ Erro ao criar match:', error);
+      console.error('❌ === ERRO AO CRIAR MATCH ===');
+      console.error('❌ Erro:', error);
+      console.error('❌ Stack:', (error as any).stack);
     }
   };
 
-  // ⭐ UPDATE MATCH
   const updateMatch = async (updates: any) => {
     if (!currentMatchIdRef.current) return;
     try {
@@ -256,7 +412,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // ⭐ START DRAFT
   const startDraft = async () => {
     if (!matchState) return;
     const sorted = [...matchState.players].sort((a, b) => b.points - a.points);
@@ -269,7 +424,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  // ⭐ FINALIZE MATCH
   const finalizeMatch = async (finalScore: MatchScore) => {
     if (!matchState) return;
     const winner = finalScore.scoreA > finalScore.scoreB ? 'A' : 'B';
@@ -301,7 +455,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setTimeout(() => deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id)), 10000);
   };
 
-  // ⭐ QUEST SYSTEM
   const generateQuestsIfNeeded = (forceReset = false) => {
     const today = new Date().setHours(0,0,0,0);
     let currentQuests = currentUser.activeQuests || [];
@@ -378,7 +531,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [isAuthenticated, currentUser.id, currentUser.riotId]);
 
-  // ⭐ PUBLIC API
   const completeRegistration = async (data: RegisterData) => {
     if (allUsers.find(u => u.username.toLowerCase() === data.username.toLowerCase())) {
       alert("Username already taken!"); return;
@@ -406,8 +558,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateProfile = async (updates: Partial<User>) => {
     try {
+      console.log('💾 Atualizando perfil no Firestore:', Object.keys(updates));
       await updateUserInDb(currentUser.id, updates);
       setCurrentUser(prev => ({ ...prev, ...updates }));
+      console.log('✅ Perfil atualizado no Firestore!');
     } catch (error) {
       console.error('❌ Erro ao atualizar perfil:', error);
     }
