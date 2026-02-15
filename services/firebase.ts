@@ -1,6 +1,9 @@
+// services/firebase.ts - VERSÃO ATUALIZADA
+// ⭐ ADICIONADO: Firebase Storage para upload de avatares
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
+import { getStorage } from 'firebase/storage'; // ⭐ NOVO
 
 const firebaseConfig = {
   apiKey: "AIzaSyAlHKJkKbbsbPU6UkFHqPtqUCPn_sg-6hk",
@@ -14,6 +17,7 @@ const firebaseConfig = {
 // Inicialização do Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app); // ⭐ NOVO: Storage inicializado
 const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async (): Promise<FirebaseUser> => {
@@ -23,7 +27,6 @@ export const signInWithGoogle = async (): Promise<FirebaseUser> => {
   } catch (error: any) {
     console.error("Erro ao fazer login com Google:", error);
     
-    // Tratamento de erros comuns
     if (error.code === 'auth/unauthorized-domain') {
         const currentDomain = window.location.hostname;
         alert(`DOMÍNIO NÃO AUTORIZADO!\n\nO Firebase bloqueou este site por segurança.\n\nSOLUÇÃO:\n1. Vá à consola do Firebase > Authentication > Settings > Authorized Domains.\n2. Adicione este domínio: ${currentDomain}`);

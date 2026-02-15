@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useGame } from '../context/GameContext';
 import { AGENTS, ROLES, AGENT_IMAGES, AGENT_BANNERS, MAP_IMAGES, MAPS } from '../constants';
@@ -7,6 +6,8 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { GameRole } from '../types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../services/firebase';
 
 interface BadgeType {
   id: string;
@@ -40,6 +41,9 @@ const Profile = () => {
   const [editTopAgents, setEditTopAgents] = useState<string[]>(profileUser.topAgents);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [activeBadge, setActiveBadge] = useState<BadgeType | null>(null);
+  
+  // ⭐ NOVO: Estado para loading do upload de avatar
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Riot ID Linking State
   const [riotIdInput, setRiotIdInput] = useState(profileUser.riotId || '');
@@ -170,15 +174,61 @@ const Profile = () => {
     }
   ];
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && isOwnProfile) {
-      const url = URL.createObjectURL(e.target.files[0]);
-      updateProfile({ avatarUrl: url });
+  // ⭐ CORRIGIDO: Upload real para Firebase Storage
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !isOwnProfile) return;
+    
+    const file = e.target.files[0];
+    
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem válida');
+      return;
+    }
+    
+    // Validar tamanho (máx 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imagem muito grande! Máximo 5MB');
+      return;
+    }
+    
+    try {
+      setIsUploadingAvatar(true);
+      console.log('📤 Fazendo upload do avatar...');
+      
+      // Criar referência única no Storage
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const fileName = `avatars/${currentUser.id}_${timestamp}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+      
+      // Upload do arquivo
+      console.log('⬆️ Enviando para Firebase Storage...');
+      const snapshot = await uploadBytes(storageRef, file);
+      
+      // Obter URL pública permanente
+      console.log('🔗 Obtendo URL permanente...');
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      console.log('✅ Upload completo! URL:', downloadURL);
+      
+      // Salvar no Firestore via updateProfile
+      await updateProfile({ avatarUrl: downloadURL });
+      
+      console.log('✅ Avatar salvo no Firestore!');
+      alert('Foto de perfil atualizada com sucesso!');
+      
+    } catch (error) {
+      console.error('❌ Erro ao fazer upload:', error);
+      alert('Erro ao atualizar foto. Tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
   // --- IDENTITY SAVING ---
-  const handleSaveIdentity = () => {
+  // ⭐ CORRIGIDO: Adicionar async/await para salvar corretamente no Firestore
+  const handleSaveIdentity = async () => {
     if (!localUsername.trim()) {
         setIdentityError("Username cannot be empty.");
         return;
@@ -196,11 +246,26 @@ const Profile = () => {
     }
 
     setIdentityError(null);
-    updateProfile({ 
-        username: localUsername,
-        primaryRole: localPrimaryRole
-    });
-    setIsIdentityDirty(false);
+    
+    try {
+      console.log('💾 Salvando username no Firestore:', localUsername);
+      
+      // ⭐ Await para garantir que salva no Firestore
+      await updateProfile({ 
+          username: localUsername,
+          primaryRole: localPrimaryRole
+      });
+      
+      console.log('✅ Username salvo no Firestore!');
+      setIsIdentityDirty(false);
+      
+      // Feedback visual
+      alert('Nome atualizado com sucesso!');
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar nome:', error);
+      setIdentityError('Erro ao salvar. Tente novamente.');
+    }
   };
 
   const toggleAgent = (agent: string) => {
@@ -330,8 +395,16 @@ const Profile = () => {
                 {isOwnProfile && (
                     <>
                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                        <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-3xl cursor-pointer">
-                            <Camera className="text-white w-8 h-8" />
+                        <button 
+                            onClick={() => fileInputRef.current?.click()} 
+                            disabled={isUploadingAvatar}
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-3xl cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            {isUploadingAvatar ? (
+                                <Loader2 className="text-white w-8 h-8 animate-spin" />
+                            ) : (
+                                <Camera className="text-white w-8 h-8" />
+                            )}
                         </button>
                     </>
                 )}
