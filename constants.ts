@@ -28,13 +28,13 @@ export const MAP_IMAGES: Record<GameMap, string> = {
     [GameMap.BIND]: "https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/splash.png",
     [GameMap.HAVEN]: "https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/splash.png",
     [GameMap.SPLIT]: "https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/splash.png",
-    [GameMap.LOTUS]: "https://static.wikia.nocookie.net/valorant/images/d/d0/Loading_Screen_Lotus.png",
+    [GameMap.LOTUS]: "https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/splash.png",
     [GameMap.SUNSET]: "https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/splash.png",
     [GameMap.PEARL]: "https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/splash.png",
     [GameMap.ICEBOX]: "https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/splash.png",
     [GameMap.BREEZE]: "https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/splash.png",
-    [GameMap.FRACTURE]: "https://static.wikia.nocookie.net/valorant/images/f/fc/Loading_Screen_Fracture.png",
-    [GameMap.ABYSS]: "https://static.wikia.nocookie.net/valorant/images/6/61/Loading_Screen_Abyss.png"
+    [GameMap.FRACTURE]: "https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/splash.png",
+    [GameMap.ABYSS]: "https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/splash.png"
 };
 
 // Agent Icons
