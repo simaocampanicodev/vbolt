@@ -6,8 +6,7 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { GameRole } from '../types';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../services/firebase';
+import { uploadToCloudinary } from '../services/cloudinary';
 
 interface BadgeType {
   id: string;
@@ -194,21 +193,10 @@ const Profile = () => {
     
     try {
       setIsUploadingAvatar(true);
-      console.log('📤 Fazendo upload do avatar...');
+      console.log('📤 Fazendo upload do avatar para Cloudinary...');
       
-      // Criar referência única no Storage
-      const timestamp = Date.now();
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const fileName = `avatars/${currentUser.id}_${timestamp}.${fileExtension}`;
-      const storageRef = ref(storage, fileName);
-      
-      // Upload do arquivo
-      console.log('⬆️ Enviando para Firebase Storage...');
-      const snapshot = await uploadBytes(storageRef, file);
-      
-      // Obter URL pública permanente
-      console.log('🔗 Obtendo URL permanente...');
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      // ✅ Upload para Cloudinary (substituindo Firebase Storage)
+      const downloadURL = await uploadToCloudinary(file);
       
       console.log('✅ Upload completo! URL:', downloadURL);
       
@@ -218,9 +206,9 @@ const Profile = () => {
       console.log('✅ Avatar salvo no Firestore!');
       alert('Foto de perfil atualizada com sucesso!');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao fazer upload:', error);
-      alert('Erro ao atualizar foto. Tente novamente.');
+      alert(error.message || 'Erro ao atualizar foto. Tente novamente.');
     } finally {
       setIsUploadingAvatar(false);
     }
