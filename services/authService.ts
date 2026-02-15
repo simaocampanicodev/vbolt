@@ -1,5 +1,5 @@
 // services/authService.ts
-// VERSÃO CORRIGIDA: SEM BCRYPT (não funciona no frontend)
+// VERSÃO FINAL: Com Firebase UID + Sem bcrypt
 import { 
   collection,
   doc,
@@ -14,6 +14,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../lib/firestore';
+import { auth } from './firebase'; // ⭐ IMPORTANTE: Importar auth
 import { User, GameRole } from '../types';
 
 export interface RegisterData {
@@ -25,14 +26,18 @@ export interface RegisterData {
   topAgents: string[];
 }
 
-// Gerar ID único usando UID do Firebase Auth
+// ⭐ ATUALIZADO: Usa Firebase UID se disponível
 const generateUserId = (firebaseUid?: string) => {
-  if (firebaseUid) return firebaseUid;
-  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  if (firebaseUid) {
+    console.log('✅ Usando Firebase UID:', firebaseUid);
+    return firebaseUid;
+  }
+  const randomId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log('⚠️ Firebase UID não disponível, usando ID aleatório:', randomId);
+  return randomId;
 };
 
 // Registrar novo usuário
-// NOTA: Senha é gerenciada pelo Firebase Auth, não salvamos no Firestore!
 export const registerUser = async (data: RegisterData): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
     console.log('📝 Iniciando registro de usuário...');
@@ -56,11 +61,13 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       return { success: false, error: 'Email já está em uso' };
     }
 
-    // Criar ID único (pode usar Firebase UID se disponível)
-    const userId = generateUserId();
+    // ⭐ USAR Firebase UID como ID do documento
+    const firebaseUid = auth.currentUser?.uid;
+    console.log('🔑 Firebase Auth UID:', firebaseUid);
+    
+    const userId = generateUserId(firebaseUid);
 
     // Dados do novo usuário
-    // ⚠️ NÃO SALVAMOS SENHA! Firebase Auth gerencia isso
     const newUserData = {
       email: data.email,
       username: data.username,
@@ -80,11 +87,13 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       created_at: serverTimestamp()
     };
 
-    console.log('💾 Salvando usuário no Firestore...');
+    console.log('💾 Salvando usuário no Firestore com ID:', userId);
     
     // Criar documento do usuário
     const userRef = doc(db, COLLECTIONS.USERS, userId);
-    await setDoc(userRef, newUserData);
+    
+    // ⭐ Usar merge: true para evitar sobrescrever se já existir
+    await setDoc(userRef, newUserData, { merge: true });
 
     console.log('✅ Usuário salvo no Firestore!');
 
@@ -93,6 +102,7 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
     const userData = userDoc.data();
 
     if (!userData) {
+      console.error('❌ Erro: documento não encontrado após criar');
       return { success: false, error: 'Erro ao criar conta' };
     }
 
@@ -115,16 +125,23 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friendRequests: userData.friend_requests || []
     };
 
+    console.log('✅ Usuário criado com sucesso:', user.username);
     return { success: true, user };
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Erro ao registrar:', error);
-    return { success: false, error: 'Erro ao criar conta' };
+    console.error('❌ Erro código:', error.code);
+    console.error('❌ Erro mensagem:', error.message);
+    
+    // Mensagens de erro mais específicas
+    if (error.code === 'permission-denied') {
+      return { success: false, error: 'Erro de permissões no Firestore. Verifique as regras de segurança.' };
+    }
+    
+    return { success: false, error: error.message || 'Erro ao criar conta' };
   }
 };
 
-// Login
-// NOTA: Login é feito pelo Firebase Auth, não por este método!
-// Este método só busca os dados do usuário no Firestore
+// Login - Busca usuário no Firestore
 export const loginUser = async (email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
     console.log('🔑 Buscando usuário por email...');
@@ -163,7 +180,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
     };
 
     return { success: true, user };
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Erro ao fazer login:', error);
     return { success: false, error: 'Erro ao fazer login' };
   }
@@ -172,7 +189,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
 // Atualizar perfil
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<boolean> => {
   try {
-    console.log('💾 Atualizando perfil...', userId);
+    console.log('💾 Atualizando perfil...', userId, Object.keys(updates));
     
     const dbUpdates: any = {};
     
@@ -200,8 +217,9 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 
     console.log('✅ Perfil atualizado!');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Erro ao atualizar perfil:', error);
+    console.error('❌ Erro código:', error.code);
     return false;
   }
 };
