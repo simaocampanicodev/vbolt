@@ -122,7 +122,24 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onSnapshot(collection(db, COLLECTIONS.QUEUE), (snapshot) => {
       console.log(`🎮 Queue: ${snapshot.size} documentos`);
       
-      const queueUsers = snapshot.docs.map(doc => doc.id)
+      // ✅ CORRIGIDO: Aguardar usuários serem carregados antes de mapear
+      const queueUserIds = snapshot.docs.map(doc => doc.id);
+      
+      // Se ainda não temos usuários carregados, aguardar
+      if (allUsersRef.current.length === 0 && queueUserIds.length > 0) {
+        console.log('⏳ Aguardando usuários serem carregados...');
+        // Tentar novamente em 500ms
+        setTimeout(() => {
+          const queueUsers = queueUserIds
+            .map(id => allUsersRef.current.find(u => u.id === id))
+            .filter(Boolean) as User[];
+          setQueue(queueUsers);
+          console.log(`🎮 Queue (retry): ${queueUsers.length}/10 jogadores`);
+        }, 500);
+        return;
+      }
+      
+      const queueUsers = queueUserIds
         .map(id => allUsersRef.current.find(u => u.id === id))
         .filter(Boolean) as User[];
       
@@ -516,11 +533,66 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const processQuestProgress = (type: QuestType, amount = 1, forceValue: number | null = null) => {
-    // ... código igual ao original
+    if (!isAuthenticated || !currentUser.activeQuests) return;
+    
+    console.log(`🎯 Processando progresso de quest: ${type}, amount: ${amount}`);
+    
+    const updatedQuests = currentUser.activeQuests.map(uq => {
+      const questDef = QUEST_POOL.find(q => q.id === uq.questId);
+      if (!questDef || questDef.type !== type || uq.completed) return uq;
+      
+      const newProgress = forceValue !== null ? forceValue : Math.min(uq.progress + amount, questDef.target);
+      const isCompleted = newProgress >= questDef.target;
+      
+      console.log(`  ✅ Quest "${questDef.description}": ${newProgress}/${questDef.target}`);
+      
+      return {
+        ...uq,
+        progress: newProgress,
+        completed: isCompleted
+      };
+    });
+    
+    updateProfile({ activeQuests: updatedQuests });
   };
 
   const claimQuestReward = (questId: string) => {
-    // ... código igual ao original
+    if (!isAuthenticated) return;
+    
+    console.log(`🎁 Resgatando recompensa da quest: ${questId}`);
+    
+    const userQuest = currentUser.activeQuests.find(uq => uq.questId === questId);
+    if (!userQuest || !userQuest.completed || userQuest.claimed) {
+      console.log('❌ Quest não pode ser resgatada:', { userQuest });
+      return;
+    }
+    
+    const questDef = QUEST_POOL.find(q => q.id === questId);
+    if (!questDef) {
+      console.log('❌ Quest não encontrada no pool');
+      return;
+    }
+    
+    // Marcar quest como claimed
+    const updatedQuests = currentUser.activeQuests.map(uq => 
+      uq.questId === questId ? { ...uq, claimed: true } : uq
+    );
+    
+    // Adicionar XP
+    const newXP = currentUser.xp + questDef.xpReward;
+    const { level: newLevel } = getLevelProgress(newXP);
+    
+    console.log(`✅ Recompensa resgatada: +${questDef.xpReward} XP`);
+    console.log(`  XP: ${currentUser.xp} → ${newXP}`);
+    console.log(`  Level: ${currentUser.level} → ${newLevel}`);
+    
+    updateProfile({
+      activeQuests: updatedQuests,
+      xp: newXP,
+      level: newLevel
+    });
+    
+    alert(`Quest Completed! +${questDef.xpReward} XP`);
   };
 
   const completeRegistration = async (data: RegisterData) => {

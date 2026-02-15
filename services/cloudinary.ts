@@ -29,10 +29,10 @@ export const uploadToCloudinary = async (file: File): Promise<string> => {
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     
     // Adicionar ID único do usuário como nome do arquivo
+    // O Cloudinary automaticamente sobrescreve arquivos com o mesmo public_id
     const user = auth.currentUser;
     if (user) {
       formData.append('public_id', `avatars/${user.uid}`);
-      formData.append('overwrite', 'true'); // Sobrescrever avatar anterior
     }
     
     // Fazer upload
