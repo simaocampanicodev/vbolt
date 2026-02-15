@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { signInWithGoogle } from '../services/firebase';
@@ -108,8 +107,17 @@ const Auth = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in zoom-in duration-500 py-10">
       <div className="mb-8 text-center">
-        <h1 className={`text-6xl font-display font-bold tracking-tighter ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-          HUB-PT<span className="text-rose-500">.</span>
+        <h1 className={`text-6xl font-display font-bold tracking-tighter flex items-center justify-center ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
+          VBO
+           {/* Bolt replacing the L - Adjusted position: right and slightly up */}
+           <svg 
+            viewBox="0 0 24 24" 
+            fill="currentColor" 
+            className={`h-24 w-14 mx-[-4px] translate-x-1 translate-y-0.5 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
+          >
+             <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" />
+          </svg>
+          T<span className="text-rose-500">.</span>
         </h1>
         <p className="text-zinc-500 tracking-widest uppercase text-sm mt-2">PORTUGUESE VALORANT HUB</p>
       </div>

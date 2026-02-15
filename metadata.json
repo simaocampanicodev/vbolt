@@ -1,5 +1,6 @@
+
 {
-  "name": "val-hub",
+  "name": "v-bolt",
   "description": "A high-end Valorant matchmaking hub with captain drafting, map veto, and ELO ranking system featuring a minimalistic, futuristic aesthetic.",
   "requestFramePermissions": []
 }

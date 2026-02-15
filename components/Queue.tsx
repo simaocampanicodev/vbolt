@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useGame } from '../context/GameContext';
 import Card from './ui/Card';
@@ -12,13 +11,6 @@ interface QueueProps {
 const Queue = () => {
   const { queue, joinQueue, leaveQueue, currentUser, testFillQueue, themeMode, isAdmin, setViewProfileId } = useGame();
   
-  // We need to access the navigation function, but since it's passed via props in App.tsx or implicit via Context...
-  // Actually, standardizing navigation to use the context would be cleaner, but for now we'll rely on the existing GameContext
-  // However, `setCurrentView` isn't in GameContext, it's in Layout/App. 
-  // We can trick the joinQueue to fail, but to redirect, we might need to handle it in UI.
-  // Ideally, let's look at how Layout.tsx handles views.
-  // Since we can't change Layout props easily without touching App.tsx, let's use a simple link or alert.
-
   const isInQueue = queue.some(u => u.id === currentUser.id);
   const hasRiotAccount = !!(currentUser.riotId && currentUser.riotTag);
 
@@ -32,8 +24,17 @@ const Queue = () => {
     <div className="max-w-5xl mx-auto flex flex-col items-center justify-center min-h-[70vh] space-y-8 animate-in fade-in duration-700">
       
       <div className="text-center space-y-2">
-        <h1 className={`text-6xl font-display font-bold tracking-tighter ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-          PLAY<span className="text-rose-500">.</span>
+        <h1 className={`text-6xl font-display font-bold tracking-tighter flex items-center justify-center ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
+          VBO
+          {/* Bolt replacing the L - Adjusted position: right and slightly up */}
+          <svg 
+            viewBox="0 0 24 24" 
+            fill="currentColor" 
+            className={`h-24 w-14 mx-[-4px] translate-x-1 translate-y-0.5 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
+          >
+             <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" />
+          </svg>
+          T<span className="text-rose-500">.</span>
         </h1>
         <p className="text-zinc-500 tracking-widest uppercase text-sm">PORTUGUESE HUB</p>
       </div>

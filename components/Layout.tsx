@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { Home, BarChart2, Zap, LogOut, History, Moon, Sun, Menu, X, ShieldAlert, Target, Users } from 'lucide-react';
+import { Home, BarChart2, LogOut, History, Moon, Sun, Menu, X, ShieldAlert, Target, Users } from 'lucide-react';
 import Button from './ui/Button';
 
 interface LayoutProps {
@@ -47,10 +47,22 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                 </button>
             )}
 
-            <div className="flex items-center cursor-pointer" onClick={() => isAuthenticated && setCurrentView('queue')}>
-                <Zap className="w-6 h-6 text-rose-500 fill-rose-500/20" />
-                <span className={`ml-3 font-display font-bold text-xl tracking-tight hidden sm:block ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-                    HUB-PT
+            <div className="flex items-center cursor-pointer group" onClick={() => isAuthenticated && setCurrentView('queue')}>
+                {/* Custom VBolt Icon: Rounded Red Lightning Bolt */}
+                <svg 
+                    viewBox="0 0 24 24" 
+                    fill="currentColor" 
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-7 h-7 text-rose-500 transition-transform duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]"
+                >
+                    <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" />
+                </svg>
+                
+                <span className={`ml-2 font-display font-bold text-2xl tracking-tighter hidden sm:block ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
+                    VBolt
                 </span>
                 {matchState && matchState.phase !== 'FINISHED' && (
                     <span className="ml-2 px-2 py-0.5 rounded bg-rose-500 text-white text-[10px] uppercase font-bold animate-pulse">
