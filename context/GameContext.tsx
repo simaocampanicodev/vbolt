@@ -269,6 +269,20 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
+  // 🔊 TOCAR SOM QUANDO MATCH É ENCONTRADA (para TODOS os jogadores)
+  useEffect(() => {
+    if (matchState?.phase === MatchPhase.READY_CHECK) {
+      try {
+        console.log('🔊 Tocando som de match encontrada...');
+        const audio = new Audio(MATCH_FOUND_SOUND);
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log('⚠️ Navegador bloqueou som:', e));
+      } catch (e) {
+        console.log('⚠️ Erro ao tocar som');
+      }
+    }
+  }, [matchState?.phase]);
+
   // ⚡ Auto-start draft when all ready
   useEffect(() => {
     if (matchState?.phase === MatchPhase.READY_CHECK && 
@@ -277,6 +291,30 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setTimeout(() => startDraft(), 2000);
     }
   }, [matchState?.readyPlayers?.length, matchState?.phase]);
+
+  // ⏰ VERIFICAR EXPIRAÇÃO DO READY CHECK
+  useEffect(() => {
+    if (matchState?.phase !== MatchPhase.READY_CHECK || !matchState.readyExpiresAt) return;
+    
+    const checkExpiration = () => {
+      const now = Date.now();
+      const timeLeft = matchState.readyExpiresAt! - now;
+      
+      if (timeLeft <= 0) {
+        if (matchState.readyPlayers.length >= matchState.players.length) {
+          console.log('✅ Todos aceitaram! Iniciando draft...');
+          startDraft();
+        } else {
+          console.log(`❌ Apenas ${matchState.readyPlayers.length}/${matchState.players.length} aceitaram. Cancelando...`);
+          cancelMatch();
+        }
+      }
+    };
+    
+    const interval = setInterval(checkExpiration, 1000);
+    checkExpiration();
+    return () => clearInterval(interval);
+  }, [matchState?.phase, matchState?.readyExpiresAt, matchState?.readyPlayers?.length]);
 
   // ⭐ CREATE MATCH - VERSÃO QUE REALMENTE FUNCIONA
   const createMatch = async (players: User[]) => {
@@ -367,6 +405,26 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await updateDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, currentMatchIdRef.current), { ...updates, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('❌ Erro ao atualizar match:', error);
+    }
+  };
+
+  const cancelMatch = async () => {
+    if (!currentMatchIdRef.current) return;
+    
+    try {
+      console.log('🚫 Cancelando match - tempo expirado ou jogadores insuficientes');
+      
+      // Deletar match do Firestore
+      await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, currentMatchIdRef.current));
+      
+      console.log('✅ Match cancelada com sucesso');
+      
+      // Limpar referências locais
+      currentMatchIdRef.current = null;
+      setMatchState(null);
+      
+    } catch (error) {
+      console.error('❌ Erro ao cancelar match:', error);
     }
   };
 
