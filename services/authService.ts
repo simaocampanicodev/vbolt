@@ -1,4 +1,5 @@
-// services/authService.firestore.ts
+// services/authService.ts
+// VERSÃO CORRIGIDA: SEM BCRYPT (não funciona no frontend)
 import { 
   collection,
   doc,
@@ -10,11 +11,9 @@ import {
   where,
   orderBy,
   limit,
-  serverTimestamp,
-  Timestamp
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../lib/firestore';
-import bcrypt from 'bcryptjs';
 import { User, GameRole } from '../types';
 
 export interface RegisterData {
@@ -26,42 +25,45 @@ export interface RegisterData {
   topAgents: string[];
 }
 
-// Gerar ID único
-const generateUserId = () => {
+// Gerar ID único usando UID do Firebase Auth
+const generateUserId = (firebaseUid?: string) => {
+  if (firebaseUid) return firebaseUid;
   return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 // Registrar novo usuário
+// NOTA: Senha é gerenciada pelo Firebase Auth, não salvamos no Firestore!
 export const registerUser = async (data: RegisterData): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
-    // Verificar se email já existe
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    const emailQuery = query(usersRef, where('email', '==', data.email), limit(1));
-    const emailSnapshot = await getDocs(emailQuery);
-
-    if (!emailSnapshot.empty) {
-      return { success: false, error: 'Email já está em uso' };
-    }
-
+    console.log('📝 Iniciando registro de usuário...');
+    
     // Verificar se username já existe
+    const usersRef = collection(db, COLLECTIONS.USERS);
     const usernameQuery = query(usersRef, where('username', '==', data.username), limit(1));
     const usernameSnapshot = await getDocs(usernameQuery);
 
     if (!usernameSnapshot.empty) {
+      console.log('❌ Username já existe');
       return { success: false, error: 'Nome de usuário já está em uso' };
     }
 
-    // Hash da senha
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    // Verificar se email já existe
+    const emailQuery = query(usersRef, where('email', '==', data.email), limit(1));
+    const emailSnapshot = await getDocs(emailQuery);
 
-    // Criar ID único para o usuário
+    if (!emailSnapshot.empty) {
+      console.log('❌ Email já existe');
+      return { success: false, error: 'Email já está em uso' };
+    }
+
+    // Criar ID único (pode usar Firebase UID se disponível)
     const userId = generateUserId();
 
     // Dados do novo usuário
+    // ⚠️ NÃO SALVAMOS SENHA! Firebase Auth gerencia isso
     const newUserData = {
       email: data.email,
       username: data.username,
-      password_hash: passwordHash,
       primary_role: data.primaryRole,
       secondary_role: data.secondaryRole,
       top_agents: data.topAgents,
@@ -78,9 +80,13 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       created_at: serverTimestamp()
     };
 
+    console.log('💾 Salvando usuário no Firestore...');
+    
     // Criar documento do usuário
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     await setDoc(userRef, newUserData);
+
+    console.log('✅ Usuário salvo no Firestore!');
 
     // Buscar o usuário criado para retornar
     const userDoc = await getDoc(userRef);
@@ -111,30 +117,31 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
 
     return { success: true, user };
   } catch (error) {
-    console.error('Erro ao registrar:', error);
+    console.error('❌ Erro ao registrar:', error);
     return { success: false, error: 'Erro ao criar conta' };
   }
 };
 
 // Login
+// NOTA: Login é feito pelo Firebase Auth, não por este método!
+// Este método só busca os dados do usuário no Firestore
 export const loginUser = async (email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
+    console.log('🔑 Buscando usuário por email...');
+    
     const usersRef = collection(db, COLLECTIONS.USERS);
     const emailQuery = query(usersRef, where('email', '==', email), limit(1));
     const querySnapshot = await getDocs(emailQuery);
 
     if (querySnapshot.empty) {
+      console.log('❌ Usuário não encontrado');
       return { success: false, error: 'Email ou senha incorretos' };
     }
 
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
 
-    // Verificar senha
-    const passwordMatch = await bcrypt.compare(password, userData.password_hash);
-    if (!passwordMatch) {
-      return { success: false, error: 'Email ou senha incorretos' };
-    }
+    console.log('✅ Usuário encontrado:', userData.username);
 
     const user: User = {
       id: userDoc.id,
@@ -157,7 +164,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
 
     return { success: true, user };
   } catch (error) {
-    console.error('Erro ao fazer login:', error);
+    console.error('❌ Erro ao fazer login:', error);
     return { success: false, error: 'Erro ao fazer login' };
   }
 };
@@ -165,6 +172,8 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
 // Atualizar perfil
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<boolean> => {
   try {
+    console.log('💾 Atualizando perfil...', userId);
+    
     const dbUpdates: any = {};
     
     if (updates.points !== undefined) dbUpdates.points = updates.points;
@@ -180,13 +189,19 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     if (updates.activeQuests !== undefined) dbUpdates.active_quests = updates.activeQuests;
     if (updates.friends !== undefined) dbUpdates.friends = updates.friends;
     if (updates.friendRequests !== undefined) dbUpdates.friend_requests = updates.friendRequests;
+    if (updates.riotId !== undefined) dbUpdates.riotId = updates.riotId;
+    if (updates.riotTag !== undefined) dbUpdates.riotTag = updates.riotTag;
+    if (updates.lastPointsChange !== undefined) dbUpdates.lastPointsChange = updates.lastPointsChange;
+    if (updates.lastDailyQuestGeneration !== undefined) dbUpdates.lastDailyQuestGeneration = updates.lastDailyQuestGeneration;
+    if (updates.lastMonthlyQuestGeneration !== undefined) dbUpdates.lastMonthlyQuestGeneration = updates.lastMonthlyQuestGeneration;
 
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     await updateDoc(userRef, dbUpdates);
 
+    console.log('✅ Perfil atualizado!');
     return true;
   } catch (error) {
-    console.error('Erro ao atualizar perfil:', error);
+    console.error('❌ Erro ao atualizar perfil:', error);
     return false;
   }
 };
@@ -220,7 +235,7 @@ export const getAllUsers = async (): Promise<User[]> => {
       };
     });
   } catch (error) {
-    console.error('Erro ao buscar usuários:', error);
+    console.error('❌ Erro ao buscar usuários:', error);
     return [];
   }
 };
@@ -255,7 +270,7 @@ export const getUserById = async (userId: string): Promise<User | null> => {
       friendRequests: u.friend_requests || []
     };
   } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
+    console.error('❌ Erro ao buscar usuário:', error);
     return null;
   }
 };
@@ -278,7 +293,7 @@ export const saveMatch = async (matchData: any): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    console.error('Erro ao salvar partida:', error);
+    console.error('❌ Erro ao salvar partida:', error);
     return false;
   }
 };
@@ -295,7 +310,7 @@ export const getMatchHistory = async (): Promise<any[]> => {
       ...doc.data()
     }));
   } catch (error) {
-    console.error('Erro ao buscar histórico:', error);
+    console.error('❌ Erro ao buscar histórico:', error);
     return [];
   }
 };
