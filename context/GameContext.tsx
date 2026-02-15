@@ -4,24 +4,14 @@ import { INITIAL_POINTS, MAPS, MATCH_FOUND_SOUND, QUEST_POOL } from '../constant
 import { generateBot, calculatePoints, calculateLevel, getLevelProgress } from '../services/gameService';
 import { auth, logoutUser } from '../services/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-
-// ⭐ NOVO: Imports do Firestore para persistência
 import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  onSnapshot,
-  query,
-  orderBy 
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
+  query, where, orderBy, limit, serverTimestamp, Timestamp
 } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../lib/firestore';
-import { 
-  registerUser as registerUserInDb, 
-  updateUserProfile as updateUserInDb
-} from '../services/authService';
+import { db } from '../lib/firestore';
+import { registerUser as registerUserInDb, updateUserProfile as updateUserInDb } from '../services/authService';
+
+const COLLECTIONS = { USERS: 'users', QUEUE: 'queue_entries', ACTIVE_MATCHES: 'active_matches', MATCHES: 'matches' };
 
 interface RegisterData {
   email: string;
@@ -41,23 +31,23 @@ interface GameContextType {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   linkRiotAccount: (riotId: string, riotTag: string) => void;
   queue: User[];
-  joinQueue: () => void;
-  leaveQueue: () => void;
+  joinQueue: () => Promise<void>;
+  leaveQueue: () => Promise<void>;
   testFillQueue: () => void;
   matchState: MatchState | null;
-  acceptMatch: () => void;
-  draftPlayer: (player: User) => void;
-  vetoMap: (map: GameMap) => void;
-  reportResult: (scoreA: number, scoreB: number) => { success: boolean, message?: string };
-  sendChatMessage: (text: string) => void;
+  acceptMatch: () => Promise<void>;
+  draftPlayer: (player: User) => Promise<void>;
+  vetoMap: (map: GameMap) => Promise<void>;
+  reportResult: (scoreA: number, scoreB: number) => Promise<{ success: boolean, message?: string }>;
+  sendChatMessage: (text: string) => Promise<void>;
   matchHistory: MatchRecord[];
   allUsers: User[];
-  reports: Report[]; 
+  reports: Report[];
   submitReport: (targetUserId: string, reason: string) => void;
-  commendPlayer: (targetUserId: string) => void;
-  resetMatch: () => void;
+  commendPlayer: (targetUserId: string) => Promise<void>;
+  resetMatch: () => Promise<void>;
   forceTimePass: () => void;
-  resetSeason: () => void;
+  resetSeason: () => Promise<void>;
   themeMode: ThemeMode;
   toggleTheme: () => void;
   handleBotAction: () => void;
@@ -65,237 +55,287 @@ interface GameContextType {
   setViewProfileId: (id: string | null) => void;
   claimQuestReward: (questId: string) => void;
   resetDailyQuests: () => void;
-  sendFriendRequest: (toId: string) => void;
-  acceptFriendRequest: (fromId: string) => void;
-  rejectFriendRequest: (fromId: string) => void;
-  removeFriend: (friendId: string) => void;
+  sendFriendRequest: (toId: string) => Promise<void>;
+  acceptFriendRequest: (fromId: string) => Promise<void>;
+  rejectFriendRequest: (fromId: string) => Promise<void>;
+  removeFriend: (friendId: string) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 const initialUser: User = {
-  id: 'user-1',
-  username: 'Guest',
-  points: INITIAL_POINTS,
-  xp: 0,
-  level: 1,
-  reputation: 10,
-  wins: 0,
-  losses: 0,
-  winstreak: 0,
-  primaryRole: GameRole.DUELIST,
-  secondaryRole: GameRole.FLEX,
-  topAgents: ['Jett', 'Reyna', 'Raze'],
-  isBot: false,
-  activeQuests: [],
-  friends: [],
-  friendRequests: []
+  id: 'user-1', username: 'Guest', points: INITIAL_POINTS, xp: 0, level: 1,
+  reputation: 10, wins: 0, losses: 0, winstreak: 0,
+  primaryRole: GameRole.DUELIST, secondaryRole: GameRole.FLEX,
+  topAgents: ['Jett', 'Reyna', 'Raze'], isBot: false,
+  activeQuests: [], friends: [], friendRequests: []
 };
 
-interface GameProviderProps {
-  children: ReactNode;
-}
-
-export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
+export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(initialUser);
   const [pendingAuthUser, setPendingAuthUser] = useState<FirebaseUser | null>(null);
-  
   const [queue, setQueue] = useState<User[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]); 
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
-
-  // Admin Logic
+  
+  const allUsersRef = useRef<User[]>([]);
+  const currentMatchIdRef = useRef<string | null>(null);
   const isAdmin = currentUser.username === 'txger.';
 
-  const allUsersRef = useRef<User[]>([]);
-  
-  // Sync ref with state
-  useEffect(() => {
-    allUsersRef.current = allUsers;
-  }, [allUsers]);
+  useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
 
-  // ⭐ NOVO: Realtime Listener para carregar todos os usuários do Firestore
+  // 🔥 LISTENER: All Users
   useEffect(() => {
-    console.log('🔥 Iniciando listener de usuários do Firestore...');
-    
-    const usersRef = collection(db, COLLECTIONS.USERS);
-    const q = query(usersRef, orderBy('points', 'desc'));
-    
+    console.log('🔥 Listener de usuários iniciado');
+    const q = query(collection(db, COLLECTIONS.USERS), orderBy('points', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log(`🔥 Firestore atualizado! Total de usuários: ${snapshot.size}`);
-      
-      const users: User[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        users.push({
-          id: docSnap.id,
-          username: data.username,
-          email: data.email,
-          points: data.points || INITIAL_POINTS,
-          xp: data.xp || 0,
-          level: data.level || 1,
-          reputation: data.reputation || 10,
-          wins: data.wins || 0,
-          losses: data.losses || 0,
-          winstreak: data.winstreak || 0,
-          primaryRole: data.primary_role as GameRole,
-          secondaryRole: data.secondary_role as GameRole,
-          topAgents: data.top_agents || [],
-          isBot: false,
-          activeQuests: data.active_quests || [],
-          friends: data.friends || [],
-          friendRequests: data.friend_requests || [],
-          avatarUrl: data.avatarUrl,
-          riotId: data.riotId,
-          riotTag: data.riotTag,
-          lastDailyQuestGeneration: data.lastDailyQuestGeneration,
-          lastMonthlyQuestGeneration: data.lastMonthlyQuestGeneration,
-          lastPointsChange: data.lastPointsChange
-        });
+      const users: User[] = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id, username: d.username, email: d.email,
+          points: d.points || INITIAL_POINTS, xp: d.xp || 0, level: d.level || 1,
+          reputation: d.reputation || 10, wins: d.wins || 0, losses: d.losses || 0,
+          winstreak: d.winstreak || 0, primaryRole: d.primary_role as GameRole,
+          secondaryRole: d.secondary_role as GameRole, topAgents: d.top_agents || [],
+          isBot: false, activeQuests: d.active_quests || [], friends: d.friends || [],
+          friendRequests: d.friend_requests || [], avatarUrl: d.avatarUrl,
+          riotId: d.riotId, riotTag: d.riotTag, lastPointsChange: d.lastPointsChange
+        };
       });
-      
       setAllUsers(users);
-      console.log('✅ Usuários carregados do Firestore:', users.map(u => u.username));
-    }, (error) => {
-      console.error('❌ Erro ao carregar usuários do Firestore:', error);
+      console.log(`✅ ${users.length} usuários carregados`);
     });
-
-    return () => {
-      console.log('🚪 Desconectando listener de usuários');
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
-  // Firebase Auth Listener
+  // 🔥 LISTENER: Queue
+  useEffect(() => {
+    console.log('🎮 Listener de queue iniciado');
+    const unsubscribe = onSnapshot(collection(db, COLLECTIONS.QUEUE), (snapshot) => {
+      const queueUsers = snapshot.docs.map(doc => doc.id)
+        .map(id => allUsersRef.current.find(u => u.id === id))
+        .filter(Boolean) as User[];
+      setQueue(queueUsers);
+      console.log(`🎮 Queue: ${queueUsers.length}/10`);
+      if (queueUsers.length >= 10 && !currentMatchIdRef.current) {
+        createMatch(queueUsers.slice(0, 10));
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 🔥 LISTENER: Active Match
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    console.log('🏟️ Listener de match iniciado');
+    const unsubscribe = onSnapshot(collection(db, COLLECTIONS.ACTIVE_MATCHES), (snapshot) => {
+      let userMatch: any = null;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        if ((d.players || []).includes(currentUser.id)) {
+          userMatch = { id: doc.id, ...d };
+        }
+      });
+      if (userMatch) {
+        currentMatchIdRef.current = userMatch.id;
+        const playersData = userMatch.playersData || {};
+        const players = userMatch.players.map((id: string) => 
+          allUsersRef.current.find(u => u.id === id) || { ...initialUser, id, username: playersData[id]?.username || 'Unknown' }
+        );
+        const getUser = (id: string) => allUsersRef.current.find(u => u.id === id) || null;
+        const getUserArray = (ids: string[]) => (ids || []).map(id => getUser(id)).filter(Boolean) as User[];
+        setMatchState({
+          id: userMatch.id,
+          phase: userMatch.phase as MatchPhase,
+          players,
+          captainA: userMatch.captainA ? getUser(userMatch.captainA) : null,
+          captainB: userMatch.captainB ? getUser(userMatch.captainB) : null,
+          teamA: getUserArray(userMatch.teamA),
+          teamB: getUserArray(userMatch.teamB),
+          turn: userMatch.turn || 'A',
+          remainingPool: getUserArray(userMatch.remainingPool),
+          remainingMaps: userMatch.remainingMaps || [],
+          selectedMap: userMatch.selectedMap || null,
+          startTime: userMatch.startTime ? (userMatch.startTime as any).toMillis() : null,
+          resultReported: userMatch.resultReported || false,
+          winner: userMatch.winner || null,
+          reportA: userMatch.reportA || null,
+          reportB: userMatch.reportB || null,
+          readyPlayers: userMatch.readyPlayers || [],
+          readyExpiresAt: userMatch.readyExpiresAt ? (userMatch.readyExpiresAt as any).toMillis() : Date.now() + 60000,
+          chat: userMatch.chat || []
+        });
+      } else if (currentMatchIdRef.current) {
+        currentMatchIdRef.current = null;
+        setMatchState(null);
+      }
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated, currentUser.id]);
+
+  // 🔥 LISTENER: Friend Requests
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id || currentUser.id === 'user-1') return;
+    const unsubscribe = onSnapshot(doc(db, COLLECTIONS.USERS, currentUser.id), (snap) => {
+      if (snap.exists()) {
+        setCurrentUser(prev => ({ ...prev, friendRequests: snap.data().friend_requests || [] }));
+      }
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated, currentUser.id]);
+
+  // 🔥 Firebase Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        console.log('🔑 Firebase user detectado:', firebaseUser.email);
-        
-        // Pequeno delay para garantir que allUsers foi carregado
         const checkUser = () => {
           const existingUser = allUsersRef.current.find(u => u.email === firebaseUser.email);
-          
           if (existingUser) {
-            console.log('✅ Usuário encontrado no Firestore:', existingUser.username);
             const { level } = getLevelProgress(existingUser.xp || 0);
-            setCurrentUser({
-              ...existingUser,
-              activeQuests: existingUser.activeQuests || [],
-              friends: existingUser.friends || [],
-              friendRequests: existingUser.friendRequests || [],
-              xp: existingUser.xp || 0,
-              level: level
-            });
+            setCurrentUser({ ...existingUser, level, activeQuests: existingUser.activeQuests || [], friends: existingUser.friends || [], friendRequests: existingUser.friendRequests || [] });
             setIsAuthenticated(true);
             setPendingAuthUser(null);
           } else {
-            console.log('⚠️  Usuário não encontrado no Firestore, aguardando registro...');
             setPendingAuthUser(firebaseUser);
             setIsAuthenticated(false);
           }
         };
-
-        // Tentar imediatamente ou esperar se allUsers ainda está vazio
-        if (allUsersRef.current.length > 0) {
-          checkUser();
-        } else {
-          console.log('⏳ Aguardando carregamento de usuários...');
-          setTimeout(checkUser, 1000);
-        }
+        allUsersRef.current.length > 0 ? checkUser() : setTimeout(checkUser, 500);
       } else {
-        console.log('🚪 Usuário não autenticado');
         setIsAuthenticated(false);
         setPendingAuthUser(null);
         setCurrentUser(initialUser);
       }
     });
-    
     return () => unsubscribe();
   }, []);
 
-  // Generate Quests on Load/Date Change
+  // ⚡ Auto-start draft when all ready
   useEffect(() => {
-    if (isAuthenticated && !currentUser.isBot && !currentUser.id.startsWith('guest-') && currentUser.username !== 'Guest') {
-      generateQuestsIfNeeded();
-      if (currentUser.username && currentUser.topAgents.length === 3 && currentUser.riotId) {
-        processQuestProgress('COMPLETE_PROFILE', 1, 1);
-      }
+    if (matchState?.phase === MatchPhase.READY_CHECK && 
+        matchState.readyPlayers.length >= matchState.players.length) {
+      setTimeout(() => startDraft(), 1000);
     }
-  }, [isAuthenticated, currentUser.id, currentUser.riotId]);
+  }, [matchState?.readyPlayers?.length, matchState?.phase]);
 
-  // Watch Ready Players & Auto Start Draft
-  useEffect(() => {
-    if (matchState?.phase === MatchPhase.READY_CHECK) {
-      const totalNeeded = matchState.players.length;
-      const currentReady = matchState.readyPlayers.length;
-      
-      if (currentReady >= totalNeeded) {
-        const timer = setTimeout(() => {
-          initializeDraft(matchState.players);
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
+  // ⭐ CREATE MATCH
+  const createMatch = async (players: User[]) => {
+    try {
+      const matchId = `match_${Date.now()}`;
+      const playersData: any = {};
+      players.forEach(p => {
+        playersData[p.id] = { username: p.username, avatarUrl: p.avatarUrl, primaryRole: p.primaryRole, points: p.points };
+      });
+      const botIds = players.filter(p => p.isBot).map(p => p.id);
+      await setDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchId), {
+        id: matchId, phase: MatchPhase.READY_CHECK, players: players.map(p => p.id), playersData,
+        readyPlayers: botIds, readyExpiresAt: Timestamp.fromMillis(Date.now() + 60000),
+        chat: [{ id: 'sys-start', senderId: 'system', senderName: 'System', text: 'Match found! Accept to join.', timestamp: Date.now(), isSystem: true }],
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(), resultReported: false
+      });
+      await Promise.all(players.map(p => deleteDoc(doc(db, COLLECTIONS.QUEUE, p.id))));
+      new Audio(MATCH_FOUND_SOUND).play().catch(() => {});
+      console.log('✅ Match criada:', matchId);
+    } catch (error) {
+      console.error('❌ Erro ao criar match:', error);
     }
-  }, [matchState?.readyPlayers.length, matchState?.phase]);
+  };
 
-  const generateQuestsIfNeeded = (forceReset: boolean = false) => {
+  // ⭐ UPDATE MATCH
+  const updateMatch = async (updates: any) => {
+    if (!currentMatchIdRef.current) return;
+    try {
+      await updateDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, currentMatchIdRef.current), { ...updates, updatedAt: serverTimestamp() });
+    } catch (error) {
+      console.error('❌ Erro ao atualizar match:', error);
+    }
+  };
+
+  // ⭐ START DRAFT
+  const startDraft = async () => {
+    if (!matchState) return;
+    const sorted = [...matchState.players].sort((a, b) => b.points - a.points);
+    const [captainA, captainB, ...pool] = sorted;
+    await updateMatch({
+      phase: MatchPhase.DRAFT, captainA: captainA.id, captainB: captainB.id,
+      teamA: [captainA.id], teamB: [captainB.id], remainingPool: pool.map(p => p.id),
+      remainingMaps: [...MAPS], turn: 'B',
+      chat: [...matchState.chat, { id: `sys-draft-${Date.now()}`, senderId: 'system', senderName: 'System', text: `Draft started. ${captainA.username} vs ${captainB.username}`, timestamp: Date.now(), isSystem: true }]
+    });
+  };
+
+  // ⭐ FINALIZE MATCH
+  const finalizeMatch = async (finalScore: MatchScore) => {
+    if (!matchState) return;
+    const winner = finalScore.scoreA > finalScore.scoreB ? 'A' : 'B';
+    await updateMatch({ phase: MatchPhase.FINISHED, winner, resultReported: true });
+    const winningTeam = winner === 'A' ? matchState.teamA : matchState.teamB;
+    const losingTeam = winner === 'A' ? matchState.teamB : matchState.teamA;
+    const record: MatchRecord = {
+      id: matchState.id, date: Date.now(), map: matchState.selectedMap!, captainA: matchState.captainA!.username,
+      captainB: matchState.captainB!.username, winner, teamAIds: matchState.teamA.map(u => u.id), teamBIds: matchState.teamB.map(u => u.id),
+      teamASnapshot: matchState.teamA.map(u => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl, role: u.primaryRole })),
+      teamBSnapshot: matchState.teamB.map(u => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl, role: u.primaryRole })),
+      score: `${finalScore.scoreA}-${finalScore.scoreB}`
+    };
+    await setDoc(doc(db, COLLECTIONS.MATCHES, matchState.id), { ...record, match_date: serverTimestamp() });
+    const updates: Promise<any>[] = [];
+    winningTeam.forEach(w => {
+      const u = allUsersRef.current.find(user => user.id === w.id);
+      if (!u) return;
+      const newPoints = calculatePoints(u.points, true, u.winstreak + 1);
+      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), { points: newPoints, lastPointsChange: newPoints - u.points, wins: u.wins + 1, winstreak: u.winstreak + 1 }));
+    });
+    losingTeam.forEach(l => {
+      const u = allUsersRef.current.find(user => user.id === l.id);
+      if (!u) return;
+      const newPoints = calculatePoints(u.points, false, 0);
+      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), { points: newPoints, lastPointsChange: newPoints - u.points, losses: u.losses + 1, winstreak: 0 }));
+    });
+    await Promise.all(updates);
+    setTimeout(() => deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id)), 10000);
+  };
+
+  // ⭐ QUEST SYSTEM
+  const generateQuestsIfNeeded = (forceReset = false) => {
     const today = new Date().setHours(0,0,0,0);
     let currentQuests = currentUser.activeQuests || [];
     let updates: Partial<User> = {};
     let hasUpdates = false;
-
-    // Daily Reset
     const hasDailyQuests = currentQuests.some(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category === 'DAILY');
     const needsDailyReset = forceReset || !hasDailyQuests || (currentUser.lastDailyQuestGeneration && currentUser.lastDailyQuestGeneration < today);
-
     if (needsDailyReset) {
       currentQuests = currentQuests.filter(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category !== 'DAILY');
-      const newDailies = QUEST_POOL.filter(q => q.category === 'DAILY').map(q => ({
-        questId: q.id, progress: 0, completed: false, claimed: false
-      }));
+      const newDailies = QUEST_POOL.filter(q => q.category === 'DAILY').map(q => ({ questId: q.id, progress: 0, completed: false, claimed: false }));
       currentQuests = [...currentQuests, ...newDailies];
       updates.lastDailyQuestGeneration = Date.now();
       hasUpdates = true;
     }
-
-    // Monthly Reset
     const hasMonthlyQuests = currentQuests.some(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category === 'MONTHLY');
     if (forceReset || !hasMonthlyQuests) {
       currentQuests = currentQuests.filter(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category !== 'MONTHLY');
-      const newMonthlies = QUEST_POOL.filter(q => q.category === 'MONTHLY').map(q => ({
-        questId: q.id, progress: 0, completed: false, claimed: false
-      }));
+      const newMonthlies = QUEST_POOL.filter(q => q.category === 'MONTHLY').map(q => ({ questId: q.id, progress: 0, completed: false, claimed: false }));
       currentQuests = [...currentQuests, ...newMonthlies];
       updates.lastMonthlyQuestGeneration = Date.now();
       hasUpdates = true;
     }
-
-    // Unique Quests
-    const uniques = QUEST_POOL.filter(q => q.category === 'UNIQUE');
-    uniques.forEach(q => {
+    QUEST_POOL.filter(q => q.category === 'UNIQUE').forEach(q => {
       if (!currentQuests.find(uq => uq.questId === q.id)) {
         currentQuests.push({ questId: q.id, progress: 0, completed: false, claimed: false });
         hasUpdates = true;
       }
     });
-
     if (hasUpdates) {
-      const newUserState = { ...currentUser, activeQuests: currentQuests, ...updates };
-      setCurrentUser(newUserState);
-      // ⭐ NOVO: Salvar no Firestore
       updateProfile({ activeQuests: currentQuests, ...updates });
     }
   };
 
-  const resetDailyQuests = () => generateQuestsIfNeeded(true);
-
-  const processQuestProgress = (type: QuestType, amount: number = 1, forceValue: number | null = null) => {
+  const processQuestProgress = (type: QuestType, amount = 1, forceValue: number | null = null) => {
     setCurrentUser(prev => {
       if (!prev.activeQuests) return prev;
       const updatedQuests = prev.activeQuests.map(uq => {
@@ -305,10 +345,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (newProgress > questDef.target) newProgress = questDef.target;
         return { ...uq, progress: newProgress, completed: newProgress >= questDef.target };
       });
-      
-      // ⭐ NOVO: Salvar no Firestore
       updateProfile({ activeQuests: updatedQuests });
-      
       return { ...prev, activeQuests: updatedQuests };
     });
   };
@@ -318,17 +355,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const quest = prev.activeQuests.find(q => q.questId === questId);
       const questDef = QUEST_POOL.find(q => q.id === questId);
       if (!quest || !quest.completed || quest.claimed || !questDef) return prev;
-
       const newXp = (prev.xp || 0) + questDef.xpReward;
       const { level: newLevel } = getLevelProgress(newXp);
-
-      const newState = {
-        ...prev,
-        xp: newXp,
-        level: newLevel,
-        activeQuests: prev.activeQuests.map(q => q.questId === questId ? { ...q, claimed: true } : q)
-      };
-      
+      const newState = { ...prev, xp: newXp, level: newLevel, activeQuests: prev.activeQuests.map(q => q.questId === questId ? { ...q, claimed: true } : q) };
       if (newLevel > prev.level) {
         newState.activeQuests = newState.activeQuests.map(uq => {
           const qDef = QUEST_POOL.find(q => q.id === uq.questId);
@@ -337,639 +366,218 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           return { ...uq, progress: Math.min(newLevel, qDef.target), completed };
         });
       }
-      
-      // ⭐ NOVO: Salvar no Firestore
-      updateProfile({ 
-        xp: newXp, 
-        level: newLevel, 
-        activeQuests: newState.activeQuests 
-      });
-      
+      updateProfile({ xp: newXp, level: newLevel, activeQuests: newState.activeQuests });
       return newState;
     });
   };
 
-  const sendFriendRequest = async (toId: string) => {
-    if (toId === currentUser.id || currentUser.friends.includes(toId)) return;
-    const targetUser = allUsers.find(u => u.id === toId);
-    if (!targetUser || targetUser.friendRequests.some(r => r.fromId === currentUser.id)) return;
-    
-    const newRequest: FriendRequest = { fromId: currentUser.id, toId, timestamp: Date.now() };
-    
-    try {
-      // ⭐ NOVO: Atualizar no Firestore
-      const targetRef = doc(db, COLLECTIONS.USERS, toId);
-      await updateDoc(targetRef, {
-        friend_requests: [...targetUser.friendRequests, newRequest]
-      });
-      alert(`Friend request sent to ${targetUser.username}`);
-      console.log('✅ Friend request enviado!');
-    } catch (error) {
-      console.error('❌ Erro ao enviar friend request:', error);
+  useEffect(() => {
+    if (isAuthenticated && !currentUser.isBot && currentUser.id !== 'user-1') {
+      generateQuestsIfNeeded();
+      if (currentUser.riotId) processQuestProgress('COMPLETE_PROFILE', 1, 1);
     }
-  };
+  }, [isAuthenticated, currentUser.id, currentUser.riotId]);
 
-  const acceptFriendRequest = async (fromId: string) => {
-    const newFriends = [...currentUser.friends, fromId];
-    const newRequests = currentUser.friendRequests.filter(r => r.fromId !== fromId);
-    
-    const fromUser = allUsers.find(u => u.id === fromId);
-    if (!fromUser) return;
-    
-    try {
-      // ⭐ NOVO: Atualizar ambos usuários no Firestore
-      const currentUserRef = doc(db, COLLECTIONS.USERS, currentUser.id);
-      const fromUserRef = doc(db, COLLECTIONS.USERS, fromId);
-      
-      await updateDoc(currentUserRef, {
-        friends: newFriends,
-        friend_requests: newRequests
-      });
-      
-      await updateDoc(fromUserRef, {
-        friends: [...fromUser.friends, currentUser.id]
-      });
-      
-      console.log('✅ Friend request aceito!');
-      processQuestProgress('ADD_FRIEND', 1);
-    } catch (error) {
-      console.error('❌ Erro ao aceitar friend request:', error);
-    }
-  };
-
-  const rejectFriendRequest = async (fromId: string) => {
-    const newRequests = currentUser.friendRequests.filter(r => r.fromId !== fromId);
-    
-    try {
-      const userRef = doc(db, COLLECTIONS.USERS, currentUser.id);
-      await updateDoc(userRef, {
-        friend_requests: newRequests
-      });
-      console.log('✅ Friend request rejeitado');
-    } catch (error) {
-      console.error('❌ Erro ao rejeitar friend request:', error);
-    }
-  };
-
-  const removeFriend = async (friendId: string) => {
-    if (!confirm("Remove friend?")) return;
-    
-    const newFriends = currentUser.friends.filter(f => f !== friendId);
-    const friend = allUsers.find(u => u.id === friendId);
-    if (!friend) return;
-    
-    try {
-      const currentUserRef = doc(db, COLLECTIONS.USERS, currentUser.id);
-      const friendRef = doc(db, COLLECTIONS.USERS, friendId);
-      
-      await updateDoc(currentUserRef, {
-        friends: newFriends
-      });
-      
-      await updateDoc(friendRef, {
-        friends: friend.friends.filter(f => f !== currentUser.id)
-      });
-      
-      console.log('✅ Friend removido');
-    } catch (error) {
-      console.error('❌ Erro ao remover friend:', error);
-    }
-  };
-
-  // ⭐ NOVO: Função de registro que salva no Firestore
+  // ⭐ PUBLIC API
   const completeRegistration = async (data: RegisterData) => {
     if (allUsers.find(u => u.username.toLowerCase() === data.username.toLowerCase())) {
-      alert("Username already taken!"); 
-      return;
+      alert("Username already taken!"); return;
     }
-    
-    console.log('📝 Registrando novo usuário no Firestore...');
-    
-    const result = await registerUserInDb({
-      email: data.email,
-      password: 'firebase-auth-managed',
-      username: data.username,
-      primaryRole: data.primaryRole,
-      secondaryRole: data.secondaryRole,
-      topAgents: data.topAgents
-    });
-    
+    const result = await registerUserInDb({ email: data.email, password: 'firebase-auth-managed', username: data.username, primaryRole: data.primaryRole, secondaryRole: data.secondaryRole, topAgents: data.topAgents });
     if (result.success && result.user) {
-      console.log('✅ Usuário registrado com sucesso no Firestore!', result.user.username);
-      // O listener onSnapshot vai pegar automaticamente e atualizar allUsers
+      const userWithAvatar = { ...result.user, avatarUrl: auth.currentUser?.photoURL };
+      if (auth.currentUser?.photoURL) await updateUserInDb(result.user.id, { avatarUrl: auth.currentUser.photoURL });
+      setCurrentUser(userWithAvatar);
+      setIsAuthenticated(true);
+      setPendingAuthUser(null);
+      alert('Conta criada com sucesso!');
     } else {
-      console.error('❌ Erro ao registrar usuário:', result.error);
-      alert(result.error || 'Failed to create account');
+      alert(result.error || 'Erro ao criar conta');
     }
   };
 
-  // ⭐ NOVO: Função de logout
   const logout = () => {
-    console.log('🚪 Logout...');
     logoutUser();
     setIsAuthenticated(false);
-    setQueue(prev => prev.filter(u => u.id !== currentUser.id));
     setMatchState(null);
-    setViewProfileId(null);
     setCurrentUser(initialUser);
     setPendingAuthUser(null);
   };
 
-  // ⭐ NOVO: Função de atualização que salva no Firestore
   const updateProfile = async (updates: Partial<User>) => {
-    console.log('💾 Atualizando perfil no Firestore...', Object.keys(updates));
-    
     try {
-      const success = await updateUserInDb(currentUser.id, updates);
-      
-      if (success) {
-        console.log('✅ Perfil atualizado no Firestore!');
-        // Atualizar estado local também
-        setCurrentUser(prev => ({ ...prev, ...updates }));
-      } else {
-        console.error('❌ Erro ao atualizar perfil no Firestore');
-      }
+      await updateUserInDb(currentUser.id, updates);
+      setCurrentUser(prev => ({ ...prev, ...updates }));
     } catch (error) {
-      console.error('❌ Exceção ao atualizar perfil:', error);
+      console.error('❌ Erro ao atualizar perfil:', error);
     }
   };
 
   const linkRiotAccount = (riotId: string, riotTag: string) => {
     updateProfile({ riotId, riotTag });
     processQuestProgress('COMPLETE_PROFILE', 1, 1);
-    alert("Riot Account linked successfully!");
+    alert("Riot Account linked!");
   };
 
-  const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
-  
-  const resetSeason = async () => {
-    if (!isAdmin) return;
-    console.log('🔄 Resetting season...');
-    
-    // ⭐ NOVO: Resetar todos os usuários no Firestore
-    const updates = allUsers.map(u => ({
-      id: u.id,
-      points: 1000,
-      wins: 0,
-      losses: 0,
-      winstreak: 0
-    }));
-    
-    for (const update of updates) {
-      const userRef = doc(db, COLLECTIONS.USERS, update.id);
-      await updateDoc(userRef, {
-        points: update.points,
-        wins: update.wins,
-        losses: update.losses,
-        winstreak: update.winstreak
-      });
-    }
-    
-    alert("Season Reset!");
+  const joinQueue = async () => {
+    if (!currentUser.riotId || !currentUser.riotTag) { alert("Link Riot Account first!"); return; }
+    await setDoc(doc(db, COLLECTIONS.QUEUE, currentUser.id), { userId: currentUser.id, username: currentUser.username, joinedAt: serverTimestamp() });
   };
 
-  // [CONTINUA NA PARTE 2...]
-  // [CONTINUAÇÃO DA PARTE 1...]
-
-  const joinQueue = () => {
-    if (!currentUser.riotId || !currentUser.riotTag) { 
-      alert("Please link your Riot Account first!"); 
-      return; 
-    }
-    if (!queue.find(u => u.id === currentUser.id)) {
-      const newQueue = [...queue, currentUser];
-      setQueue(newQueue);
-      console.log(`🎮 ${currentUser.username} entrou na queue (${newQueue.length}/10)`);
-      if (newQueue.length >= 10) {
-        console.log('⚡ 10 jogadores! Iniciando ready check...');
-        triggerReadyCheck(newQueue.slice(0, 10));
-      }
-    }
+  const leaveQueue = async () => {
+    await deleteDoc(doc(db, COLLECTIONS.QUEUE, currentUser.id));
   };
 
-  const leaveQueue = () => {
-    setQueue(prev => prev.filter(u => u.id !== currentUser.id));
-    console.log(`🚪 ${currentUser.username} saiu da queue`);
-  };
-  
   const testFillQueue = () => {
     const botsNeeded = 10 - queue.length;
-    const newBots: User[] = [];
-    for (let i = 0; i < botsNeeded; i++) {
+    const newBots = Array.from({ length: botsNeeded }, (_, i) => {
       const bot = generateBot(`test-${Date.now()}-${i}`);
-      bot.riotId = bot.username.split('#')[0]; 
+      bot.riotId = bot.username.split('#')[0];
       bot.riotTag = 'BOT';
-      newBots.push(bot);
-    }
+      return bot;
+    });
     setAllUsers(prev => [...prev, ...newBots]);
-    const finalQueue = [...queue, ...newBots];
-    setQueue(finalQueue);
-    console.log(`🤖 ${botsNeeded} bots adicionados à queue`);
-    if (finalQueue.length >= 10) triggerReadyCheck(finalQueue.slice(0, 10));
+    newBots.forEach(bot => setDoc(doc(db, COLLECTIONS.QUEUE, bot.id), { userId: bot.id, username: bot.username, joinedAt: serverTimestamp() }));
   };
 
-  const triggerReadyCheck = (players: User[]) => {
-    new Audio(MATCH_FOUND_SOUND).play().catch(() => {});
-    setQueue([]); 
-
-    const botIds = players.filter(p => p.isBot).map(p => p.id);
-
-    setMatchState({
-      id: `match-${Date.now()}`, 
-      phase: MatchPhase.READY_CHECK, 
-      players, 
-      captainA: null, 
-      captainB: null, 
-      teamA: [], 
-      teamB: [], 
-      turn: 'A', 
-      remainingPool: [], 
-      remainingMaps: [], 
-      selectedMap: null, 
-      startTime: null, 
-      resultReported: false, 
-      winner: null, 
-      reportA: null, 
-      reportB: null, 
-      readyPlayers: botIds,
-      readyExpiresAt: Date.now() + 60000, 
-      chat: []
-    });
-    
-    console.log('🔔 Ready check iniciado! Jogadores:', players.map(p => p.username));
-  };
-
-  const acceptMatch = () => {
+  const acceptMatch = async () => {
     if (!matchState || matchState.phase !== MatchPhase.READY_CHECK || matchState.readyPlayers.includes(currentUser.id)) return;
-    setMatchState(prev => prev ? ({ ...prev, readyPlayers: [...prev.readyPlayers, currentUser.id] }) : null);
-    console.log(`✅ ${currentUser.username} aceitou a match (${matchState.readyPlayers.length + 1}/${matchState.players.length})`);
+    await updateMatch({ readyPlayers: [...matchState.readyPlayers, currentUser.id] });
   };
 
-  const initializeDraft = (players: User[]) => {
-    let sortedPlayers = [...players].sort((a, b) => b.points - a.points);
-    const captainA = sortedPlayers[0]; 
-    const captainB = sortedPlayers[1]; 
-    const pool = sortedPlayers.slice(2);
-    
-    setMatchState(prev => {
-      if (!prev) return null;
-      return { 
-        ...prev, 
-        phase: MatchPhase.DRAFT, 
-        captainA, 
-        captainB, 
-        teamA: [captainA], 
-        teamB: [captainB], 
-        turn: 'B', 
-        remainingPool: pool, 
-        remainingMaps: [...MAPS], 
-        readyPlayers: [], 
-        chat: [{ 
-          id: 'sys-start', 
-          senderId: 'system', 
-          senderName: 'System', 
-          text: 'Draft started. Captains will pick teams.', 
-          timestamp: Date.now(), 
-          isSystem: true 
-        }] 
-      };
+  const draftPlayer = async (player: User) => {
+    if (!matchState || matchState.phase !== MatchPhase.DRAFT) return;
+    const isTeamA = matchState.turn === 'A';
+    const newTeamA = isTeamA ? [...matchState.teamA.map(u => u.id), player.id] : matchState.teamA.map(u => u.id);
+    const newTeamB = !isTeamA ? [...matchState.teamB.map(u => u.id), player.id] : matchState.teamB.map(u => u.id);
+    const newPool = matchState.remainingPool.filter(p => p.id !== player.id).map(p => p.id);
+    await updateMatch({
+      teamA: newTeamA, teamB: newTeamB, remainingPool: newPool, turn: isTeamA ? 'B' : 'A',
+      phase: newPool.length === 0 ? MatchPhase.VETO : MatchPhase.DRAFT,
+      chat: [...matchState.chat, { id: `sys-draft-${Date.now()}`, senderId: 'system', senderName: 'System', text: `${player.username} drafted to Team ${isTeamA ? 'A' : 'B'}`, timestamp: Date.now(), isSystem: true }]
     });
-    
-    console.log('🎯 Draft iniciado! Capitães:', captainA.username, 'vs', captainB.username);
   };
 
-  const sendChatMessage = (text: string) => {
-    if (!matchState || !text.trim()) return;
-    const message: ChatMessage = { 
-      id: `msg-${Date.now()}`, 
-      senderId: currentUser.id, 
-      senderName: currentUser.username, 
-      text: text.trim(), 
-      timestamp: Date.now() 
+  const vetoMap = async (map: GameMap) => {
+    if (!matchState || matchState.phase !== MatchPhase.VETO) return;
+    const newMaps = matchState.remainingMaps.filter(m => m !== map);
+    const updates: any = {
+      remainingMaps: newMaps,
+      chat: [...matchState.chat, { id: `sys-veto-${Date.now()}`, senderId: 'system', senderName: 'System', text: `Map ${map} banned`, timestamp: Date.now(), isSystem: true }]
     };
-    setMatchState(prev => prev ? ({ ...prev, chat: [...prev.chat, message] }) : null);
+    if (newMaps.length === 1) {
+      updates.selectedMap = newMaps[0];
+      updates.phase = MatchPhase.LIVE;
+      updates.startTime = Timestamp.now();
+      updates.chat.push({ id: `sys-live-${Date.now()}`, senderId: 'system', senderName: 'System', text: `Match LIVE on ${newMaps[0]}!`, timestamp: Date.now(), isSystem: true });
+    } else {
+      updates.turn = matchState.turn === 'A' ? 'B' : 'A';
+    }
+    await updateMatch(updates);
   };
 
-  // BOT ACTIONS
-  const handleBotAction = useCallback(() => {
-    if (!matchState) return;
-
-    const isTeamA = matchState.turn === 'A';
-    const currentCaptain = isTeamA ? matchState.captainA : matchState.captainB;
-    
-    if (!currentCaptain || !currentCaptain.isBot) return;
-
-    if (matchState.phase === MatchPhase.DRAFT) {
-      const pickable = matchState.remainingPool;
-      if (pickable.length > 0) {
-        const randomPlayer = pickable[Math.floor(Math.random() * pickable.length)];
-        draftPlayer(randomPlayer);
-      }
-    } else if (matchState.phase === MatchPhase.VETO) {
-      const bannable = matchState.remainingMaps;
-      if (bannable.length > 0) {
-        const randomMap = bannable[Math.floor(Math.random() * bannable.length)];
-        vetoMap(randomMap);
-      }
-    }
-  }, [matchState]);
-
-  const draftPlayer = (player: User) => {
-    if (!matchState) return;
-    const isTeamA = matchState.turn === 'A';
-    
-    setMatchState(prev => {
-      if (!prev) return null;
-      const newTeamA = isTeamA ? [...prev.teamA, player] : prev.teamA;
-      const newTeamB = !isTeamA ? [...prev.teamB, player] : prev.teamB;
-      const newPool = prev.remainingPool.filter(p => p.id !== player.id);
-      const newPhase = newPool.length === 0 ? MatchPhase.VETO : MatchPhase.DRAFT;
-      
-      return { 
-        ...prev, 
-        teamA: newTeamA, 
-        teamB: newTeamB, 
-        remainingPool: newPool, 
-        turn: isTeamA ? 'B' : 'A', 
-        phase: newPhase,
-        chat: [...prev.chat, { 
-          id: `sys-draft-${Date.now()}`, 
-          senderId: 'system', 
-          senderName: 'System', 
-          text: `${player.username} drafted to Team ${isTeamA ? 'A' : 'B'}`, 
-          timestamp: Date.now(), 
-          isSystem: true 
-        }] 
-      };
-    });
-    
-    console.log(`👥 ${player.username} foi draftado para Team ${isTeamA ? 'A' : 'B'}`);
+  const sendChatMessage = async (text: string) => {
+    if (!matchState || !text.trim()) return;
+    await updateMatch({ chat: [...matchState.chat, { id: `msg-${Date.now()}`, senderId: currentUser.id, senderName: currentUser.username, text: text.trim(), timestamp: Date.now() }] });
   };
 
-  useEffect(() => {
-    if (matchState?.phase === MatchPhase.DRAFT && matchState.remainingPool.length === 0) {
-      setMatchState(prev => prev ? ({ ...prev, phase: MatchPhase.VETO, turn: 'A' }) : null);
-      console.log('🗺️ Draft completo! Iniciando veto de mapas...');
-    }
-  }, [matchState?.remainingPool.length]);
-
-  const vetoMap = (map: GameMap) => {
-    if (!matchState) return;
-    
-    setMatchState(prev => {
-      if (!prev) return null;
-      const newMaps = prev.remainingMaps.filter(m => m !== map);
-      
-      if (newMaps.length === 1) {
-        // Último mapa = mapa escolhido
-        console.log(`🗺️ Mapa selecionado: ${newMaps[0]}`);
-        return { 
-          ...prev, 
-          remainingMaps: newMaps, 
-          selectedMap: newMaps[0], 
-          phase: MatchPhase.LIVE, 
-          startTime: Date.now(), 
-          chat: [
-            ...prev.chat, 
-            { 
-              id: `sys-veto-${Date.now()}`, 
-              senderId: 'system', 
-              senderName: 'System', 
-              text: `Map ${map} banned.`, 
-              timestamp: Date.now(), 
-              isSystem: true 
-            },
-            { 
-              id: `sys-live-${Date.now()}`, 
-              senderId: 'system', 
-              senderName: 'System', 
-              text: `Match is now LIVE on ${newMaps[0]}!`, 
-              timestamp: Date.now(), 
-              isSystem: true 
-            }
-          ] 
-        };
+  const reportResult = async (scoreA: number, scoreB: number): Promise<{ success: boolean, message?: string }> => {
+    if (!matchState) return { success: false };
+    const isTeamA = matchState.teamA.some(u => u.id === currentUser.id);
+    const isTeamB = matchState.teamB.some(u => u.id === currentUser.id);
+    const forcedReport = isAdmin && !isTeamA && !isTeamB;
+    const reportData = { scoreA, scoreB };
+    let newReportA = matchState.reportA;
+    let newReportB = matchState.reportB;
+    if (isTeamA || forcedReport) newReportA = reportData;
+    if (isTeamB || forcedReport) newReportB = reportData;
+    await updateMatch({ reportA: newReportA, reportB: newReportB });
+    if (newReportA && newReportB) {
+      if (newReportA.scoreA === newReportB.scoreA && newReportA.scoreB === newReportB.scoreB) {
+        await finalizeMatch(newReportA);
+        return { success: true };
       }
-      
-      return { 
-        ...prev, 
-        remainingMaps: newMaps, 
-        turn: prev.turn === 'A' ? 'B' : 'A', 
-        chat: [...prev.chat, { 
-          id: `sys-veto-${Date.now()}`, 
-          senderId: 'system', 
-          senderName: 'System', 
-          text: `Map ${map} banned.`, 
-          timestamp: Date.now(), 
-          isSystem: true 
-        }] 
-      };
-    });
+      return { success: false, message: "Scores do not match." };
+    }
+    return { success: true, message: "Score submitted." };
+  };
+
+  const sendFriendRequest = async (toId: string) => {
+    if (toId === currentUser.id || currentUser.friends.includes(toId)) return;
+    const targetUser = allUsers.find(u => u.id === toId);
+    if (!targetUser || targetUser.friendRequests.some(r => r.fromId === currentUser.id)) return;
+    await updateDoc(doc(db, COLLECTIONS.USERS, toId), { friend_requests: [...targetUser.friendRequests, { fromId: currentUser.id, toId, timestamp: Date.now() }] });
+  };
+
+  const acceptFriendRequest = async (fromId: string) => {
+    const fromUser = allUsers.find(u => u.id === fromId);
+    if (!fromUser) return;
+    await updateDoc(doc(db, COLLECTIONS.USERS, currentUser.id), { friends: [...currentUser.friends, fromId], friend_requests: currentUser.friendRequests.filter(r => r.fromId !== fromId) });
+    await updateDoc(doc(db, COLLECTIONS.USERS, fromId), { friends: [...fromUser.friends, currentUser.id] });
+    processQuestProgress('ADD_FRIEND', 1);
+  };
+
+  const rejectFriendRequest = async (fromId: string) => {
+    await updateDoc(doc(db, COLLECTIONS.USERS, currentUser.id), { friend_requests: currentUser.friendRequests.filter(r => r.fromId !== fromId) });
+  };
+
+  const removeFriend = async (friendId: string) => {
+    if (!confirm("Remove friend?")) return;
+    const friend = allUsers.find(u => u.id === friendId);
+    if (!friend) return;
+    await updateDoc(doc(db, COLLECTIONS.USERS, currentUser.id), { friends: currentUser.friends.filter(f => f !== friendId) });
+    await updateDoc(doc(db, COLLECTIONS.USERS, friendId), { friends: friend.friends.filter(f => f !== currentUser.id) });
+  };
+
+  const commendPlayer = async (targetUserId: string) => {
+    const target = allUsers.find(u => u.id === targetUserId);
+    if (!target) return;
+    await updateDoc(doc(db, COLLECTIONS.USERS, targetUserId), { reputation: (target.reputation || 0) + 1 });
+    processQuestProgress('GIVE_COMMENDS', 1);
+  };
+
+  const submitReport = (targetUserId: string, reason: string) => {
+    setReports(prev => [...prev, { id: `rep-${Date.now()}`, reporter: currentUser.username, reportedUser: allUsers.find(u => u.id === targetUserId)?.username || 'Unknown', reason, timestamp: Date.now() }]);
+  };
+
+  const resetMatch = async () => {
+    if (currentMatchIdRef.current) await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, currentMatchIdRef.current));
   };
 
   const forceTimePass = () => {
     if (matchState?.phase === MatchPhase.LIVE && matchState.startTime) {
-      setMatchState({ ...matchState, startTime: Date.now() - (21 * 60 * 1000) });
-      console.log('⏩ Tempo forçado!');
+      updateMatch({ startTime: Timestamp.fromMillis(Date.now() - 21 * 60 * 1000) });
     }
   };
 
-  const reportResult = (scoreA: number, scoreB: number) => {
-    if (!matchState) return { success: false };
-    
-    const isTeamA = matchState.teamA.some(u => u.id === currentUser.id);
-    const isTeamB = matchState.teamB.some(u => u.id === currentUser.id);
-    const forcedReport = isAdmin && !isTeamA && !isTeamB;
-    
-    let newReportA = matchState.reportA; 
-    let newReportB = matchState.reportB; 
-    const reportData = { scoreA, scoreB };
-    
-    if (isTeamA || forcedReport) newReportA = reportData; 
-    if (isTeamB || forcedReport) newReportB = reportData;
-    
-    setMatchState(prev => prev ? ({ ...prev, reportA: newReportA, reportB: newReportB }) : null);
-    
-    console.log(`📊 Resultado reportado: ${scoreA}-${scoreB}`);
-    
-    if (newReportA && newReportB) {
-      if (newReportA.scoreA === newReportB.scoreA && newReportA.scoreB === newReportB.scoreB) {
-        finalizeMatch(newReportA); 
-        return { success: true };
-      } else { 
-        console.log('⚠️ Scores não coincidem!');
-        return { success: false, message: "Scores do not match. Please coordinate with the other team." }; 
-      }
+  const resetSeason = async () => {
+    if (!isAdmin) return;
+    await Promise.all(allUsers.map(u => updateDoc(doc(db, COLLECTIONS.USERS, u.id), { points: 1000, wins: 0, losses: 0, winstreak: 0 })));
+    alert("Season Reset!");
+  };
+
+  const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
+  const resetDailyQuests = () => generateQuestsIfNeeded(true);
+  const handleBotAction = useCallback(() => {
+    if (!matchState) return;
+    const captain = matchState.turn === 'A' ? matchState.captainA : matchState.captainB;
+    if (!captain?.isBot) return;
+    if (matchState.phase === MatchPhase.DRAFT && matchState.remainingPool.length > 0) {
+      draftPlayer(matchState.remainingPool[Math.floor(Math.random() * matchState.remainingPool.length)]);
+    } else if (matchState.phase === MatchPhase.VETO && matchState.remainingMaps.length > 0) {
+      vetoMap(matchState.remainingMaps[Math.floor(Math.random() * matchState.remainingMaps.length)]);
     }
-    
-    return { success: true, message: "Score report submitted. Waiting for other team..." };
-  };
-
-  const finalizeMatch = (finalScore: MatchScore) => {
-    const winner = finalScore.scoreA > finalScore.scoreB ? 'A' : 'B';
-    const scoreString = `${finalScore.scoreA}-${finalScore.scoreB}`;
-    
-    console.log(`🏆 Match finalizada! Vencedor: Team ${winner} (${scoreString})`);
-    
-    setMatchState(prev => prev ? ({ ...prev, phase: MatchPhase.FINISHED, winner: winner, resultReported: true }) : null);
-    
-    const winningTeam = winner === 'A' ? matchState?.teamA : matchState?.teamB;
-    const losingTeam = winner === 'A' ? matchState?.teamB : matchState?.teamA;
-    
-    if (!winningTeam || !losingTeam || !matchState) return;
-    
-    const mapUserToSnapshot = (u: User): PlayerSnapshot => ({ 
-      id: u.id, 
-      username: u.username, 
-      avatarUrl: u.avatarUrl, 
-      role: u.primaryRole 
-    });
-    
-    const record: MatchRecord = { 
-      id: matchState.id, 
-      date: Date.now(), 
-      map: matchState.selectedMap!, 
-      captainA: matchState.captainA!.username, 
-      captainB: matchState.captainB!.username, 
-      winner: winner, 
-      teamAIds: matchState.teamA.map(u => u.id), 
-      teamBIds: matchState.teamB.map(u => u.id), 
-      teamASnapshot: matchState.teamA.map(mapUserToSnapshot), 
-      teamBSnapshot: matchState.teamB.map(mapUserToSnapshot), 
-      score: scoreString 
-    };
-    
-    setMatchHistory(prev => [record, ...prev]);
-    
-    // ⭐ NOVO: Atualizar pontos de todos os jogadores no Firestore
-    const updatePromises: Promise<any>[] = [];
-    
-    winningTeam.forEach(winnerUser => {
-      const u = allUsers.find(user => user.id === winnerUser.id);
-      if (!u) return;
-      
-      const newPoints = calculatePoints(u.points, true, u.winstreak + 1);
-      const pointsChange = newPoints - u.points;
-      
-      console.log(`✅ ${u.username}: ${u.points} → ${newPoints} (+${pointsChange})`);
-      
-      const userRef = doc(db, COLLECTIONS.USERS, u.id);
-      updatePromises.push(
-        updateDoc(userRef, {
-          points: newPoints,
-          lastPointsChange: pointsChange,
-          wins: u.wins + 1,
-          winstreak: u.winstreak + 1
-        })
-      );
-      
-      if (u.id === currentUser.id) { 
-        processQuestProgress('PLAY_MATCHES', 1); 
-        processQuestProgress('WIN_MATCHES', 1); 
-        processQuestProgress('GET_WINSTREAK', 0, u.winstreak + 1); 
-      }
-    });
-    
-    losingTeam.forEach(loserUser => {
-      const u = allUsers.find(user => user.id === loserUser.id);
-      if (!u) return;
-      
-      const newPoints = calculatePoints(u.points, false, 0);
-      const pointsChange = newPoints - u.points;
-      
-      console.log(`❌ ${u.username}: ${u.points} → ${newPoints} (${pointsChange})`);
-      
-      const userRef = doc(db, COLLECTIONS.USERS, u.id);
-      updatePromises.push(
-        updateDoc(userRef, {
-          points: newPoints,
-          lastPointsChange: pointsChange,
-          losses: u.losses + 1,
-          winstreak: 0
-        })
-      );
-      
-      if (u.id === currentUser.id) { 
-        processQuestProgress('PLAY_MATCHES', 1); 
-      }
-    });
-    
-    // Executar todas as atualizações
-    Promise.all(updatePromises)
-      .then(() => console.log('✅ Todos os pontos atualizados no Firestore!'))
-      .catch(error => console.error('❌ Erro ao atualizar pontos:', error));
-  };
-
-  const submitReport = (targetUserId: string, reason: string) => {
-    setReports(prev => [...prev, { 
-      id: `rep-${Date.now()}`, 
-      reporter: currentUser.username, 
-      reportedUser: allUsers.find(u => u.id === targetUserId)?.username || 'Unknown', 
-      reason, 
-      timestamp: Date.now() 
-    }]);
-    console.log(`🚨 Report enviado: ${targetUserId} - ${reason}`);
-  };
-
-  const commendPlayer = (targetUserId: string) => {
-    const targetUser = allUsers.find(u => u.id === targetUserId);
-    if (!targetUser) return;
-    
-    const userRef = doc(db, COLLECTIONS.USERS, targetUserId);
-    updateDoc(userRef, {
-      reputation: (targetUser.reputation || 0) + 1
-    }).then(() => {
-      console.log(`👍 Commend enviado para ${targetUser.username}`);
-      processQuestProgress('GIVE_COMMENDS', 1);
-    }).catch(error => {
-      console.error('❌ Erro ao enviar commend:', error);
-    });
-  };
-
-  const resetMatch = () => {
-    setMatchState(null);
-    console.log('🔄 Match resetada');
-  };
+  }, [matchState]);
 
   return (
     <GameContext.Provider value={{
-      isAuthenticated, 
-      isAdmin, 
-      completeRegistration, 
-      logout,
-      currentUser, 
-      pendingAuthUser, 
-      updateProfile, 
-      linkRiotAccount, 
-      queue, 
-      joinQueue, 
-      leaveQueue, 
-      testFillQueue,
-      matchState, 
-      acceptMatch, 
-      draftPlayer, 
-      vetoMap, 
-      reportResult, 
-      sendChatMessage,
-      matchHistory, 
-      allUsers, 
-      reports, 
-      submitReport, 
-      commendPlayer, 
-      resetMatch, 
-      forceTimePass, 
-      resetSeason,
-      themeMode, 
-      toggleTheme, 
-      handleBotAction,
-      viewProfileId, 
-      setViewProfileId, 
-      claimQuestReward, 
-      resetDailyQuests,
-      sendFriendRequest, 
-      acceptFriendRequest, 
-      rejectFriendRequest, 
-      removeFriend
+      isAuthenticated, isAdmin, completeRegistration, logout, currentUser, pendingAuthUser,
+      updateProfile, linkRiotAccount, queue, joinQueue, leaveQueue, testFillQueue,
+      matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage,
+      matchHistory, allUsers, reports, submitReport, commendPlayer, resetMatch,
+      forceTimePass, resetSeason, themeMode, toggleTheme, handleBotAction,
+      viewProfileId, setViewProfileId, claimQuestReward, resetDailyQuests,
+      sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend
     }}>
       {children}
     </GameContext.Provider>
@@ -978,6 +586,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
 export const useGame = () => {
   const context = useContext(GameContext);
-  if (!context) throw new Error("useGame must be used within a GameProvider");
+  if (!context) throw new Error("useGame must be used within GameProvider");
   return context;
 };
