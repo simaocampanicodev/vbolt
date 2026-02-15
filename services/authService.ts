@@ -1,4 +1,19 @@
-import { supabase } from '../lib/supabase';
+// services/authService.firestore.ts
+import { 
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
+import { db, COLLECTIONS } from '../lib/firestore';
 import bcrypt from 'bcryptjs';
 import { User, GameRole } from '../types';
 
@@ -11,80 +26,87 @@ export interface RegisterData {
   topAgents: string[];
 }
 
+// Gerar ID único
+const generateUserId = () => {
+  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 // Registrar novo usuário
 export const registerUser = async (data: RegisterData): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
     // Verificar se email já existe
-    const { data: existingEmail } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', data.email)
-      .single();
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const emailQuery = query(usersRef, where('email', '==', data.email), limit(1));
+    const emailSnapshot = await getDocs(emailQuery);
 
-    if (existingEmail) {
+    if (!emailSnapshot.empty) {
       return { success: false, error: 'Email já está em uso' };
     }
 
     // Verificar se username já existe
-    const { data: existingUsername } = await supabase
-      .from('users')
-      .select('id')
-      .eq('username', data.username)
-      .single();
+    const usernameQuery = query(usersRef, where('username', '==', data.username), limit(1));
+    const usernameSnapshot = await getDocs(usernameQuery);
 
-    if (existingUsername) {
+    if (!usernameSnapshot.empty) {
       return { success: false, error: 'Nome de usuário já está em uso' };
     }
 
     // Hash da senha
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // Criar usuário
-    const { data: newUser, error } = await supabase
-      .from('users')
-      .insert({
-        email: data.email,
-        username: data.username,
-        password_hash: passwordHash,
-        primary_role: data.primaryRole,
-        secondary_role: data.secondaryRole,
-        top_agents: data.topAgents,
-        points: 1000,
-        xp: 0,
-        level: 1,
-        reputation: 10,
-        wins: 0,
-        losses: 0,
-        winstreak: 0,
-        active_quests: [],
-        friends: [],
-        friend_requests: []
-      })
-      .select()
-      .single();
+    // Criar ID único para o usuário
+    const userId = generateUserId();
 
-    if (error) {
-      console.error('Erro ao criar usuário:', error);
+    // Dados do novo usuário
+    const newUserData = {
+      email: data.email,
+      username: data.username,
+      password_hash: passwordHash,
+      primary_role: data.primaryRole,
+      secondary_role: data.secondaryRole,
+      top_agents: data.topAgents,
+      points: 1000,
+      xp: 0,
+      level: 1,
+      reputation: 10,
+      wins: 0,
+      losses: 0,
+      winstreak: 0,
+      active_quests: [],
+      friends: [],
+      friend_requests: [],
+      created_at: serverTimestamp()
+    };
+
+    // Criar documento do usuário
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await setDoc(userRef, newUserData);
+
+    // Buscar o usuário criado para retornar
+    const userDoc = await getDoc(userRef);
+    const userData = userDoc.data();
+
+    if (!userData) {
       return { success: false, error: 'Erro ao criar conta' };
     }
 
     const user: User = {
-      id: newUser.id,
-      username: newUser.username,
-      points: newUser.points,
-      xp: newUser.xp,
-      level: newUser.level,
-      reputation: newUser.reputation,
-      wins: newUser.wins,
-      losses: newUser.losses,
-      winstreak: newUser.winstreak,
-      primaryRole: newUser.primary_role as GameRole,
-      secondaryRole: newUser.secondary_role as GameRole,
-      topAgents: newUser.top_agents,
+      id: userId,
+      username: userData.username,
+      points: userData.points,
+      xp: userData.xp,
+      level: userData.level,
+      reputation: userData.reputation,
+      wins: userData.wins,
+      losses: userData.losses,
+      winstreak: userData.winstreak,
+      primaryRole: userData.primary_role as GameRole,
+      secondaryRole: userData.secondary_role as GameRole,
+      topAgents: userData.top_agents,
       isBot: false,
-      activeQuests: newUser.active_quests || [],
-      friends: newUser.friends || [],
-      friendRequests: newUser.friend_requests || []
+      activeQuests: userData.active_quests || [],
+      friends: userData.friends || [],
+      friendRequests: userData.friend_requests || []
     };
 
     return { success: true, user };
@@ -97,15 +119,16 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
 // Login
 export const loginUser = async (email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> => {
   try {
-    const { data: userData, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const emailQuery = query(usersRef, where('email', '==', email), limit(1));
+    const querySnapshot = await getDocs(emailQuery);
 
-    if (error || !userData) {
+    if (querySnapshot.empty) {
       return { success: false, error: 'Email ou senha incorretos' };
     }
+
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data();
 
     // Verificar senha
     const passwordMatch = await bcrypt.compare(password, userData.password_hash);
@@ -114,7 +137,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
     }
 
     const user: User = {
-      id: userData.id,
+      id: userDoc.id,
       username: userData.username,
       points: userData.points,
       xp: userData.xp,
@@ -158,15 +181,8 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     if (updates.friends !== undefined) dbUpdates.friends = updates.friends;
     if (updates.friendRequests !== undefined) dbUpdates.friend_requests = updates.friendRequests;
 
-    const { error } = await supabase
-      .from('users')
-      .update(dbUpdates)
-      .eq('id', userId);
-
-    if (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      return false;
-    }
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, dbUpdates);
 
     return true;
   } catch (error) {
@@ -178,18 +194,50 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 // Buscar todos os usuários (para leaderboard)
 export const getAllUsers = async (): Promise<User[]> => {
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('points', { ascending: false });
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, orderBy('points', 'desc'));
+    const querySnapshot = await getDocs(q);
 
-    if (error) {
-      console.error('Erro ao buscar usuários:', error);
-      return [];
+    return querySnapshot.docs.map(doc => {
+      const u = doc.data();
+      return {
+        id: doc.id,
+        username: u.username,
+        points: u.points,
+        xp: u.xp,
+        level: u.level,
+        reputation: u.reputation,
+        wins: u.wins,
+        losses: u.losses,
+        winstreak: u.winstreak,
+        primaryRole: u.primary_role as GameRole,
+        secondaryRole: u.secondary_role as GameRole,
+        topAgents: u.top_agents,
+        isBot: false,
+        activeQuests: u.active_quests || [],
+        friends: u.friends || [],
+        friendRequests: u.friend_requests || []
+      };
+    });
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    return [];
+  }
+};
+
+// Buscar usuário por ID
+export const getUserById = async (userId: string): Promise<User | null> => {
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      return null;
     }
 
-    return data.map(u => ({
-      id: u.id,
+    const u = userDoc.data();
+    return {
+      id: userDoc.id,
       username: u.username,
       points: u.points,
       xp: u.xp,
@@ -205,31 +253,28 @@ export const getAllUsers = async (): Promise<User[]> => {
       activeQuests: u.active_quests || [],
       friends: u.friends || [],
       friendRequests: u.friend_requests || []
-    }));
+    };
   } catch (error) {
-    console.error('Erro ao buscar usuários:', error);
-    return [];
+    console.error('Erro ao buscar usuário:', error);
+    return null;
   }
 };
 
 // Salvar partida no histórico
 export const saveMatch = async (matchData: any): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('matches')
-      .insert({
-        team_a: matchData.teamA,
-        team_b: matchData.teamB,
-        map: matchData.map,
-        score_a: matchData.scoreA,
-        score_b: matchData.scoreB,
-        winner: matchData.winner
-      });
+    const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const matchRef = doc(db, COLLECTIONS.MATCHES, matchId);
 
-    if (error) {
-      console.error('Erro ao salvar partida:', error);
-      return false;
-    }
+    await setDoc(matchRef, {
+      team_a: matchData.teamA,
+      team_b: matchData.teamB,
+      map: matchData.map,
+      score_a: matchData.scoreA,
+      score_b: matchData.scoreB,
+      winner: matchData.winner,
+      match_date: serverTimestamp()
+    });
 
     return true;
   } catch (error) {
@@ -241,18 +286,14 @@ export const saveMatch = async (matchData: any): Promise<boolean> => {
 // Buscar histórico de partidas
 export const getMatchHistory = async (): Promise<any[]> => {
   try {
-    const { data, error } = await supabase
-      .from('matches')
-      .select('*')
-      .order('match_date', { ascending: false })
-      .limit(50);
+    const matchesRef = collection(db, COLLECTIONS.MATCHES);
+    const q = query(matchesRef, orderBy('match_date', 'desc'), limit(50));
+    const querySnapshot = await getDocs(q);
 
-    if (error) {
-      console.error('Erro ao buscar histórico:', error);
-      return [];
-    }
-
-    return data || [];
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
   } catch (error) {
     console.error('Erro ao buscar histórico:', error);
     return [];

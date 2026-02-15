@@ -2,21 +2,17 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
 
-// ------------------------------------------------------------------
-// COLA AQUI AS TUAS CHAVES DO FIREBASE (Passo 4 do Guia)
-// ------------------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "AIzaSyAlHKJkKbbsbPU6UkFHqPtqUCPn_sg-6hk",             // Ex: "AIzaSy..."
-  authDomain: "val-hub-4994b.firebaseapp.com",         // Ex: "val-hub.firebaseapp.com"
-  projectId: "val-hub-4994b",           // Ex: "val-hub-123"
-  storageBucket: "val-hub-4994b.firebasestorage.app",   // Ex: "val-hub.appspot.com"
-  messagingSenderId: "107992744301",    // Ex: "8321..."
-  appId: "1:107992744301:web:3499e5bc70499e0f351a64"                    // Ex: "1:8321..."
+  apiKey: "AIzaSyAlHKJkKbbsbPU6UkFHqPtqUCPn_sg-6hk",
+  authDomain: "val-hub-4994b.firebaseapp.com",
+  projectId: "val-hub-4994b",
+  storageBucket: "val-hub-4994b.firebasestorage.app",
+  messagingSenderId: "107992744301",
+  appId: "1:107992744301:web:3499e5bc70499e0f351a64"
 };
 
 // Inicialização do Firebase
-// Se as chaves acima não estiverem preenchidas, o site vai dar erro na consola.
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
