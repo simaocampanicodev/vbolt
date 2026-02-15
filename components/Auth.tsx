@@ -109,11 +109,11 @@ const Auth = () => {
       <div className="mb-8 text-center">
         <h1 className={`text-6xl font-display font-bold tracking-tighter flex items-center justify-center ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
           VBO
-           {/* Bolt replacing the L - Adjusted position: right and slightly up */}
+           {/* Bolt replacing the L - Rotated 12 degrees right to look like an L */}
            <svg 
             viewBox="0 0 24 24" 
             fill="currentColor" 
-            className={`h-24 w-14 mx-[-4px] translate-x-1 translate-y-0.5 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
+            className={`h-24 w-14 mx-[-4px] translate-x-0.5 translate-y-0.5 rotate-12 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}
           >
              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" />
           </svg>
