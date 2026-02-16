@@ -9,7 +9,7 @@ interface QueueProps {
 }
 
 const Queue = () => {
-  const { queue, joinQueue, leaveQueue, currentUser, testFillQueue, themeMode, isAdmin, setViewProfileId } = useGame();
+  const { queue, joinQueue, leaveQueue, currentUser, testFillQueue, createTestMatchDirect, themeMode, isAdmin, setViewProfileId } = useGame();
   
   const isInQueue = queue.some(u => u.id === currentUser.id);
   const hasRiotAccount = !!(currentUser.riotId && currentUser.riotTag);
@@ -83,9 +83,18 @@ const Queue = () => {
          <div className={`p-4 border-b flex justify-between items-center ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-zinc-100 border-black/5'}`}>
             <h3 className="text-xs uppercase tracking-widest text-zinc-500">Queue Lobby</h3>
             {isAdmin && (
-                <button onClick={testFillQueue} className="text-[10px] text-zinc-500 hover:text-rose-500 uppercase transition-colors">
-                    [Admin] Fill Queue
-                </button>
+                <div className="flex space-x-2">
+                    <button onClick={testFillQueue} className="text-[10px] text-zinc-500 hover:text-rose-500 uppercase transition-colors">
+                        [Admin] Fill Queue
+                    </button>
+                    <span className="text-zinc-700">|</span>
+                    <button 
+                        onClick={createTestMatchDirect} 
+                        className="text-[10px] text-zinc-500 hover:text-emerald-500 uppercase transition-colors font-bold"
+                    >
+                        [Admin] Test Match → LIVE
+                    </button>
+                </div>
             )}
          </div>
          <div className={`divide-y max-h-[200px] overflow-y-auto ${themeMode === 'dark' ? 'divide-white/5' : 'divide-black/5'}`}>

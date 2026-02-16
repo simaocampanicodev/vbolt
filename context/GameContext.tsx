@@ -37,6 +37,8 @@ interface GameContextType {
   joinQueue: () => Promise<void>;
   leaveQueue: () => Promise<void>;
   testFillQueue: () => void;
+  createTestMatchDirect: () => Promise<void>; // ⭐ NOVO: Criar match direto para LIVE
+  exitMatchToLobby: () => Promise<void>; // ⭐ NOVO: Sair da match e voltar ao lobby
   matchState: MatchState | null;
   acceptMatch: () => Promise<void>;
   draftPlayer: (player: User) => Promise<void>;
@@ -691,6 +693,130 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('✅ Bots adicionados à queue!');
   };
 
+  // ⭐ NOVO: Criar match de teste direto para LIVE
+  const createTestMatchDirect = async () => {
+    if (!isAdmin) {
+      console.log('❌ Apenas admin pode criar test match');
+      return;
+    }
+
+    try {
+      console.log('========================================');
+      console.log('🧪 CRIANDO TEST MATCH DIRETO PARA LIVE');
+      console.log('========================================');
+
+      // Criar 9 bots para completar 10 jogadores
+      const bots = Array.from({ length: 9 }, (_, i) => {
+        const bot = generateBot(`testbot-${Date.now()}-${i}`);
+        bot.riotId = bot.username.split('#')[0];
+        bot.riotTag = 'BOT';
+        return bot;
+      });
+
+      const allPlayers = [currentUser, ...bots];
+      console.log('Jogadores:', allPlayers.map(p => p.username).join(', '));
+
+      const matchId = `testmatch_${Date.now()}`;
+      
+      // Dividir em 2 teams (admin no Team A)
+      const teamA = allPlayers.slice(0, 5);
+      const teamB = allPlayers.slice(5, 10);
+
+      const playersData: any = {};
+      allPlayers.forEach(p => {
+        playersData[p.id] = {
+          username: p.username,
+          avatarUrl: p.avatarUrl || null,
+          primaryRole: p.primaryRole,
+          points: p.points
+        };
+      });
+
+      // Selecionar mapa aleatório
+      const randomMap = MAPS[Math.floor(Math.random() * MAPS.length)] as GameMap;
+
+      const matchData = {
+        id: matchId,
+        phase: MatchPhase.LIVE, // ⭐ Direto para LIVE
+        players: allPlayers.map(p => p.id),
+        playersData: playersData,
+        captainA: teamA[0].id,
+        captainB: teamB[0].id,
+        teamA: teamA.map(p => p.id),
+        teamB: teamB.map(p => p.id),
+        turn: 'A',
+        remainingPool: [],
+        remainingMaps: [],
+        selectedMap: randomMap, // ⭐ Mapa já selecionado
+        startTime: Timestamp.fromMillis(Date.now()), // ⭐ Match começa agora
+        resultReported: false,
+        winner: null,
+        reportA: null,
+        reportB: null,
+        playerReports: [], // ⭐ Array vazio para reports
+        readyPlayers: allPlayers.map(p => p.id), // Todos já "ready"
+        chat: [{
+          id: 'sys-test',
+          senderId: 'system',
+          senderName: 'System',
+          text: '🧪 Test match created by admin. Match started immediately.',
+          timestamp: Date.now(),
+          isSystem: true
+        }],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      console.log('💾 Salvando test match no Firestore...');
+      const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchId);
+      await setDoc(matchRef, matchData);
+
+      console.log('✅ Test match criada!');
+      console.log(`📍 Map: ${randomMap}`);
+      console.log(`👥 Team A: ${teamA.map(p => p.username).join(', ')}`);
+      console.log(`👥 Team B: ${teamB.map(p => p.username).join(', ')}`);
+      console.log('========================================');
+
+      alert('✅ Test match criada! Você está na fase LIVE.');
+
+    } catch (error) {
+      console.error('❌ Erro ao criar test match:', error);
+      alert('Erro ao criar test match. Ver console.');
+    }
+  };
+
+  // ⭐ NOVO: Sair da match e voltar ao lobby
+  const exitMatchToLobby = async () => {
+    if (!isAdmin) {
+      console.log('❌ Apenas admin pode sair da match');
+      return;
+    }
+
+    if (!matchState) {
+      console.log('⚠️ Não está em nenhuma match');
+      return;
+    }
+
+    try {
+      console.log('🚪 Admin saindo da match...');
+      
+      // Deletar a match ativa
+      await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+      
+      console.log('✅ Match deletada! Voltando ao lobby...');
+      
+      // O listener vai detectar a deleção e atualizar o estado
+      setMatchState(null);
+      currentMatchIdRef.current = null;
+
+      alert('✅ Voltou ao lobby!');
+
+    } catch (error) {
+      console.error('❌ Erro ao sair da match:', error);
+      alert('Erro ao sair da match. Ver console.');
+    }
+  };
+
   const acceptMatch = async () => {
     if (!matchState || matchState.phase !== MatchPhase.READY_CHECK || matchState.readyPlayers.includes(currentUser.id)) return;
     console.log(`✅ ${currentUser.username} aceitou a match`);
@@ -1045,6 +1171,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <GameContext.Provider value={{
       isAuthenticated, isAdmin, completeRegistration, logout, currentUser, pendingAuthUser,
       updateProfile, linkRiotAccount, queue, joinQueue, leaveQueue, testFillQueue,
+      createTestMatchDirect, exitMatchToLobby, // ⭐ NOVO: Funções de teste admin
       matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage,
       matchHistory, allUsers, reports, submitReport, commendPlayer, resetMatch,
       forceTimePass, resetSeason, themeMode, toggleTheme, handleBotAction,

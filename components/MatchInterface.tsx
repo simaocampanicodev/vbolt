@@ -9,7 +9,7 @@ import { MAP_IMAGES } from '../constants';
 import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User } from 'lucide-react';
 
 const MatchInterface = () => {
-  const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted } = useGame();
+  const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted } = useGame();
   const [timeLeft, setTimeLeft] = useState(0);
   
   // Mobile UI State
@@ -194,6 +194,22 @@ const MatchInterface = () => {
   return (
     <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto h-[calc(100vh-180px)] overflow-hidden`}>
         
+        {/* ⭐ NOVO: Botão Admin para sair da match */}
+        {isAdmin && (
+            <div className="absolute top-2 right-2 z-[70]">
+                <button
+                    onClick={() => {
+                        if (confirm('Tem certeza que quer sair desta match? A match será deletada.')) {
+                            exitMatchToLobby();
+                        }
+                    }}
+                    className="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-lg backdrop-blur-sm border border-rose-500/30 transition-all"
+                >
+                    [Admin] Exit to Lobby
+                </button>
+            </div>
+        )}
+        
         {/* Report Modal */}
         {reportModalOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -273,8 +289,12 @@ const MatchInterface = () => {
                             <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
                                 {matchState.teamA.map(u => (
                                     <div key={u.id} className={`flex items-center p-2 rounded-lg ${themeMode === 'dark' ? 'bg-white/5' : 'bg-black/5'} animate-in slide-in-from-left-2`}>
-                                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-emerald-900/50 text-white rounded-full text-[10px] mr-2">
-                                            {u.username[0].toUpperCase()}
+                                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-emerald-900/50 text-white rounded-full text-[10px] mr-2 overflow-hidden">
+                                            {u.avatarUrl ? (
+                                                <img src={u.avatarUrl} alt={u.username} className="w-full h-full object-cover" />
+                                            ) : (
+                                                u.username[0].toUpperCase()
+                                            )}
                                         </div>
                                         <span className={`text-xs font-bold truncate ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{u.username}</span>
                                     </div>
@@ -330,8 +350,12 @@ const MatchInterface = () => {
                             <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
                                 {matchState.teamB.map(u => (
                                     <div key={u.id} className={`flex flex-row-reverse items-center p-2 rounded-lg ${themeMode === 'dark' ? 'bg-white/5' : 'bg-black/5'} animate-in slide-in-from-right-2`}>
-                                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-rose-900/50 text-white rounded-full text-[10px] ml-2">
-                                            {u.username[0].toUpperCase()}
+                                        <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-rose-900/50 text-white rounded-full text-[10px] ml-2 overflow-hidden">
+                                            {u.avatarUrl ? (
+                                                <img src={u.avatarUrl} alt={u.username} className="w-full h-full object-cover" />
+                                            ) : (
+                                                u.username[0].toUpperCase()
+                                            )}
                                         </div>
                                         <span className={`text-xs font-bold truncate ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{u.username}</span>
                                     </div>
@@ -434,7 +458,16 @@ const MatchInterface = () => {
                                 <div className="md:hidden text-center text-emerald-500 font-bold uppercase tracking-widest text-xs mb-2">Team {matchState.captainA?.username}</div>
                                 {matchState.teamA.map(player => (
                                     <div key={player.id} className="flex items-center justify-between p-3 border-b border-emerald-500/10 bg-emerald-500/5 md:bg-transparent rounded-lg md:rounded-none">
-                                        <span className={`font-display text-lg ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{player.username}</span>
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white overflow-hidden border border-emerald-500/30">
+                                                {player.avatarUrl ? (
+                                                    <img src={player.avatarUrl} alt={player.username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs">{player.username[0].toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <span className={`font-display text-lg ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{player.username}</span>
+                                        </div>
                                         <span className="text-xs text-zinc-500">{getRankInfo(player.points).name}</span>
                                     </div>
                                 ))}
@@ -443,7 +476,16 @@ const MatchInterface = () => {
                                 <div className="md:hidden text-center text-rose-500 font-bold uppercase tracking-widest text-xs mb-2 mt-4">Team {matchState.captainB?.username}</div>
                                 {matchState.teamB.map(player => (
                                     <div key={player.id} className="flex items-center justify-between md:flex-row-reverse p-3 border-b border-rose-500/10 bg-rose-500/5 md:bg-transparent rounded-lg md:rounded-none">
-                                        <span className={`font-display text-lg ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{player.username}</span>
+                                        <div className="flex items-center space-x-3 md:flex-row-reverse md:space-x-reverse md:space-x-3">
+                                            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white overflow-hidden border border-rose-500/30">
+                                                {player.avatarUrl ? (
+                                                    <img src={player.avatarUrl} alt={player.username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs">{player.username[0].toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <span className={`font-display text-lg ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>{player.username}</span>
+                                        </div>
                                         <span className="text-xs text-zinc-500">{getRankInfo(player.points).name}</span>
                                     </div>
                                 ))}
