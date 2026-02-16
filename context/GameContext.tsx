@@ -32,7 +32,7 @@ interface GameContextType {
   currentUser: User;
   pendingAuthUser: FirebaseUser | null;
   updateProfile: (updates: Partial<User>) => Promise<void>;
-  linkRiotAccount: (riotId: string, riotTag: string) => void;
+  linkRiotAccount: (riotId: string, riotTag: string) => Promise<void>;
   queue: User[];
   joinQueue: () => Promise<void>;
   leaveQueue: () => Promise<void>;
@@ -805,8 +805,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const linkRiotAccount = (riotId: string, riotTag: string) => {
-    updateProfile({ riotId, riotTag });
+  const linkRiotAccount = async (riotId: string, riotTag: string) => {
+    await updateProfile({ riotId, riotTag });
+    processQuestProgress('COMPLETE_PROFILE', 1);
     alert("Riot Account linked!");
   };
 
@@ -1243,6 +1244,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await updateDoc(doc(db, COLLECTIONS.USERS, fromId), {
         friends: [...fromUser.friends, currentUser.id]
       });
+
+      processQuestProgress('ADD_FRIEND', 1);
       
       console.log('✅ Friend request aceito!');
       alert('Friend request accepted!');

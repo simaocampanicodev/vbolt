@@ -452,7 +452,7 @@ const Profile = () => {
                     <h1 className="text-3xl md:text-4xl font-display font-bold text-white shadow-black drop-shadow-lg truncate max-w-full">{profileUser.username}</h1>
                     <span 
                         className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase border border-white/20 shadow-lg flex-shrink-0"
-                        style={{ backgroundColor: rank.color, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                        style={{ backgroundColor: rank.color, textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)' }}
                     >
                         {rank.name}
                     </span>
