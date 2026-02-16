@@ -11,9 +11,10 @@ import AdminReports from './components/AdminReports';
 import Auth from './components/Auth';
 import QuestsView from './components/QuestsView';
 import FriendsView from './components/FriendsView';
+import { ToastContainer } from './components/ui/Toast';
 
 const AppContent = () => {
-  const { matchState, isAuthenticated, viewProfileId, setViewProfileId } = useGame();
+  const { matchState, isAuthenticated, viewProfileId, setViewProfileId, toasts, removeToast, themeMode } = useGame();
   const [currentView, setCurrentView] = useState('queue');
 
   // If viewProfileId is set, force switch to profile view
@@ -74,9 +75,16 @@ const AppContent = () => {
   }
 
   return (
-    <Layout currentView={currentView} setCurrentView={handleSetCurrentView}>
-      {content}
-    </Layout>
+    <>
+      <Layout currentView={currentView} setCurrentView={handleSetCurrentView}>
+        {content}
+      </Layout>
+      <ToastContainer 
+        toasts={toasts} 
+        onRemove={removeToast}
+        themeMode={themeMode}
+      />
+    </>
   );
 };
 

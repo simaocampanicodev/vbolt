@@ -19,7 +19,7 @@ interface BadgeType {
 }
 
 const Profile = () => {
-  const { currentUser, updateProfile, themeMode, allUsers, viewProfileId, isAdmin, resetSeason, matchHistory, linkRiotAccount, sendFriendRequest, acceptFriendRequest, rejectFriendRequest } = useGame();
+  const { currentUser, updateProfile, themeMode, allUsers, viewProfileId, isAdmin, resetSeason, matchHistory, linkRiotAccount, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, showToast } = useGame();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Determine which user to show
@@ -185,13 +185,13 @@ const Profile = () => {
     
     // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image.');
+      showToast('Please select a valid image.', 'error');
       return;
     }
     
     // Validar tamanho (máx 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image too large! Maximum 5MB.');
+      showToast('Image too large! Maximum 5MB.', 'error');
       return;
     }
     
@@ -210,11 +210,11 @@ const Profile = () => {
       await updateProfile({ avatarUrl: downloadURL });
       
       console.log('✅ Avatar salvo no Firestore!');
-      alert('Profile photo updated successfully!');
+      showToast('Profile photo updated successfully!', 'success');
       
     } catch (error: any) {
       console.error('❌ Erro ao fazer upload:', error);
-      alert(error.message || 'Error updating photo. Try again.');
+      showToast(error.message || 'Error updating photo. Try again.', 'error');
     } finally {
       setIsUploadingAvatar(false);
       // Limpar o input para permitir re-upload da mesma imagem
@@ -244,11 +244,11 @@ const Profile = () => {
       await updateProfile({ avatarUrl: undefined });
       
       console.log('✅ Avatar removido com sucesso!');
-      alert('Profile photo removed successfully!');
+      showToast('Profile photo removed successfully!', 'success');
       
     } catch (error: any) {
       console.error('❌ Erro ao remover avatar:', error);
-      alert(error.message || 'Error removing photo. Try again.');
+      showToast(error.message || 'Error removing photo. Try again.', 'error');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -288,7 +288,7 @@ const Profile = () => {
       setIsIdentityDirty(false);
       
       // Feedback visual
-      alert('Name updated successfully!');
+      showToast('Name updated successfully!', 'success');
       
     } catch (error) {
       console.error('❌ Erro ao salvar nome:', error);

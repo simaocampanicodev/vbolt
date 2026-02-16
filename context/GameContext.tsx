@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { registerUser as registerUserInDb, updateUserProfile as updateUserInDb } from '../services/authService';
+import { Toast, ToastType } from '../components/ui/Toast';
 
 const COLLECTIONS = { USERS: 'users', QUEUE: 'queue_entries', ACTIVE_MATCHES: 'active_matches', MATCHES: 'matches' };
 
@@ -66,6 +67,9 @@ interface GameContextType {
   removeFriend: (friendId: string) => Promise<void>;
   matchInteractions: string[];
   markPlayerAsInteracted: (playerId: string) => void;
+  showToast: (message: string, type?: ToastType, duration?: number) => void;
+  removeToast: (id: string) => void;
+  toasts: Toast[];
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -90,6 +94,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
   const [matchInteractions, setMatchInteractions] = useState<string[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   
   const allUsersRef = useRef<User[]>([]);
   const currentMatchIdRef = useRef<string | null>(null);
@@ -754,12 +759,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       level: newLevel
     });
     
-    alert(`Quest Completed! +${questDef.xpReward} XP`);
+    showToast(`Quest Completed! +${questDef.xpReward} XP`, 'success');
   };
 
   const completeRegistration = async (data: RegisterData) => {
     if (allUsers.find(u => u.username.toLowerCase() === data.username.toLowerCase())) {
-      alert("Username already taken!");
+      showToast("Username already taken!", 'error');
       return;
     }
     const result = await registerUserInDb({
@@ -774,9 +779,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUser(result.user);
       setIsAuthenticated(true);
       setPendingAuthUser(null);
-      alert('Account created successfully!');
+      showToast('Account created successfully!', 'success');
     } else {
-      alert(result.error || 'Error creating account');
+      showToast(result.error || 'Error creating account', 'error');
     }
   };
 
@@ -809,12 +814,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const linkRiotAccount = async (riotId: string, riotTag: string) => {
     await updateProfile({ riotId, riotTag });
     processQuestProgress('COMPLETE_PROFILE', 1);
-    alert("Riot Account linked!");
+    showToast("Riot Account linked!", 'success');
   };
 
   const joinQueue = async () => {
     if (!currentUser.riotId || !currentUser.riotTag) {
-      alert("Link Riot Account first!");
+      showToast("Link Riot Account first!", 'warning');
       return;
     }
     console.log('🎮 Entrando na queue...');
@@ -862,13 +867,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // ⭐ VERIFICAR SE ESTÁ NA QUEUE
     const isUserInQueue = queue.some(u => u.id === currentUser.id);
     if (!isUserInQueue) {
-      alert('You need to be in the queue to create a test match!');
+      showToast('You need to be in the queue to create a test match!', 'warning');
       return;
     }
 
     // ⭐ VERIFICAR SE TEM PELO MENOS 2 JOGADORES NA QUEUE
     if (queue.length < 2) {
-      alert('You need at least 2 players in the queue (you + 1 or more).');
+      showToast('You need at least 2 players in the queue (you + 1 or more).', 'warning');
       return;
     }
 
@@ -956,11 +961,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       console.log('========================================');
 
-      alert('Test match created! You are in the LIVE phase.');
+      showToast('Test match created! You are in the LIVE phase.', 'success');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao criar test match:', error);
-      alert('Error creating test match. Check console.');
+      showToast(error.message || 'Error creating test match. Check console.', 'error');
     }
   };
 
@@ -988,11 +993,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMatchState(null);
       currentMatchIdRef.current = null;
 
-      alert('Back to lobby!');
+      showToast('Back to lobby!', 'success');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao sair da match:', error);
-      alert('Error leaving match. Check console.');
+      showToast(error.message || 'Error leaving match. Check console.', 'error');
     }
   };
 
@@ -1174,26 +1179,26 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (toId === currentUser.id) {
         console.log('❌ Não pode enviar request para si mesmo');
-        alert('You cannot send a friend request to yourself!');
+        showToast('You cannot send a friend request to yourself!', 'warning');
         return;
       }
       
       if (currentUser.friends.includes(toId)) {
         console.log('❌ Já são amigos');
-        alert('You are already friends!');
+        showToast('You are already friends!', 'info');
         return;
       }
       
       const targetUser = allUsers.find(u => u.id === toId);
       if (!targetUser) {
         console.log('❌ Usuário alvo não encontrado');
-        alert('User not found!');
+        showToast('User not found!', 'error');
         return;
       }
       
       if (targetUser.friendRequests.some(r => r.fromId === currentUser.id)) {
         console.log('❌ Request já enviado');
-        alert('You have already sent a friend request to this user!');
+        showToast('You have already sent a friend request to this user!', 'info');
         return;
       }
       
@@ -1213,16 +1218,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       console.log('✅ Friend request enviado com sucesso!');
-      alert('Friend request sent!');
+      showToast('Friend request sent!', 'success');
     } catch (error: any) {
       console.error('❌ Erro ao enviar friend request:', error);
       console.error('❌ Erro código:', error.code);
       console.error('❌ Erro mensagem:', error.message);
       
       if (error.code === 'permission-denied') {
-        alert('Permission denied.\n\nFirestore rules do not allow sending friend requests.\n\nUpdate the Firestore rules in the Firebase Console.\n\nSee FIRESTORE_RULES.txt for instructions.');
+        showToast('Permission denied. Firestore rules do not allow sending friend requests. Update the Firestore rules in the Firebase Console.', 'error', 6000);
       } else {
-        alert(`Error sending friend request:\n${error.message}`);
+        showToast(`Error sending friend request: ${error.message}`, 'error');
       }
     }
   };
@@ -1242,10 +1247,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const countForAccepter = !countedAccepter.includes(fromId);
       const countForSender = !countedSender.includes(currentUser.id);
 
-      await updateDoc(doc(db, COLLECTIONS.USERS, currentUser.id), {
-        friends: [...currentUser.friends, fromId],
-        friend_requests: currentUser.friendRequests.filter(r => r.fromId !== fromId)
-      });
+      // Update accepter's friends and remove request
+      const accepterUpdates: Record<string, unknown> = {
+        friends: [...(currentUser.friends || []), fromId],
+        friend_requests: (currentUser.friendRequests || []).filter(r => r.fromId !== fromId)
+      };
 
       if (countForAccepter) {
         const updatedQuests = (currentUser.activeQuests || []).map(uq => {
@@ -1254,14 +1260,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const newProgress = Math.min(uq.progress + 1, questDef.target);
           return { ...uq, progress: newProgress, completed: newProgress >= questDef.target };
         });
-        await updateUserInDb(currentUser.id, {
-          activeQuests: updatedQuests,
-          friendQuestCountedIds: [...countedAccepter, fromId]
-        });
+        accepterUpdates.active_quests = updatedQuests;
+        accepterUpdates.friend_quest_counted_ids = [...countedAccepter, fromId];
       }
 
+      await updateDoc(doc(db, COLLECTIONS.USERS, currentUser.id), accepterUpdates);
+
+      // Update sender's friends
       const senderUpdates: Record<string, unknown> = {
-        friends: [...fromUser.friends, currentUser.id]
+        friends: [...(fromUser.friends || []), currentUser.id]
       };
       if (countForSender) {
         const updatedQuestsSender = (fromUser.activeQuests || []).map(uq => {
@@ -1277,10 +1284,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await updateDoc(doc(db, COLLECTIONS.USERS, fromId), senderUpdates);
 
       console.log('✅ Friend request aceito!');
-      alert('Friend request accepted!');
-    } catch (error) {
+      showToast('Friend request accepted!', 'success');
+    } catch (error: any) {
       console.error('❌ Erro ao aceitar friend request:', error);
-      alert('Error accepting friend request');
+      showToast(error.message || 'Error accepting friend request', 'error');
     }
   };
 
@@ -1319,9 +1326,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       console.log('✅ Amigo removido');
-    } catch (error) {
+      showToast('Friend removed', 'info');
+    } catch (error: any) {
       console.error('❌ Erro ao remover amigo:', error);
-      alert('Error removing friend');
+      showToast(error.message || 'Error removing friend', 'error');
     }
   };
 
@@ -1361,7 +1369,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       losses: 0,
       winstreak: 0
     })));
-    alert("Season Reset!");
+    showToast("Season Reset!", 'success');
   };
 
   const toggleTheme = () => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
@@ -1386,6 +1394,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!matchState) setMatchInteractions([]);
   }, [matchState?.id]);
 
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
+    const id = `toast-${Date.now()}-${Math.random()}`;
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   return (
     <GameContext.Provider value={{
       isAuthenticated, isAdmin, completeRegistration, logout, currentUser, pendingAuthUser,
@@ -1396,7 +1413,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       forceTimePass, resetSeason, themeMode, toggleTheme, handleBotAction,
       viewProfileId, setViewProfileId, claimQuestReward, resetDailyQuests,
       sendFriendRequest, acceptFriendRequest, rejectFriendRequest, removeFriend,
-      matchInteractions, markPlayerAsInteracted
+      matchInteractions, markPlayerAsInteracted,
+      showToast, removeToast, toasts
     }}>
       {children}
     </GameContext.Provider>
