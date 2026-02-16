@@ -522,10 +522,10 @@ const MatchInterface = () => {
                                                 
                                                 <div className="text-center">
                                                     <p className={`text-lg font-bold ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-                                                        Verificação em Progresso
+                                                        Verification in Progress
                                                     </p>
                                                     <p className="text-sm text-zinc-500">
-                                                        Aguardando outros jogadores reportarem...
+                                                        Waiting for other players to report...
                                                     </p>
                                                     <p className="text-xs text-rose-500 font-bold mt-2">
                                                         {matchState.playerReports.length} / 3 players voted
