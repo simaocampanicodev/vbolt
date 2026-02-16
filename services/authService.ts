@@ -7,6 +7,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteField,
   query,
   where,
   orderBy,
@@ -209,7 +210,18 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     if (updates.friendRequests !== undefined) dbUpdates.friend_requests = updates.friendRequests;
     if (updates.riotId !== undefined) dbUpdates.riotId = updates.riotId;
     if (updates.riotTag !== undefined) dbUpdates.riotTag = updates.riotTag;
-    if (updates.avatarUrl !== undefined) dbUpdates.avatarUrl = updates.avatarUrl;
+    
+    // ✅ CORREÇÃO: Permitir remover avatarUrl
+    if ('avatarUrl' in updates) {
+      // Se avatarUrl é null ou undefined, remover o campo
+      if (updates.avatarUrl === null || updates.avatarUrl === undefined) {
+        dbUpdates.avatarUrl = deleteField();
+      } else {
+        // Caso contrário, atualizar com a nova URL
+        dbUpdates.avatarUrl = updates.avatarUrl;
+      }
+    }
+    
     if (updates.lastPointsChange !== undefined) dbUpdates.lastPointsChange = updates.lastPointsChange;
     if (updates.lastDailyQuestGeneration !== undefined) dbUpdates.lastDailyQuestGeneration = updates.lastDailyQuestGeneration;
     if (updates.lastMonthlyQuestGeneration !== undefined) dbUpdates.lastMonthlyQuestGeneration = updates.lastMonthlyQuestGeneration;

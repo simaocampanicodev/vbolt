@@ -488,8 +488,20 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const winningTeam = winner === 'A' ? matchState.teamA : matchState.teamB;
     const losingTeam = winner === 'A' ? matchState.teamB : matchState.teamA;
     
-    console.log('👥 Winning team:', winningTeam.map(u => u.username));
-    console.log('👥 Losing team:', losingTeam.map(u => u.username));
+    // ✅ CORREÇÃO: Validar times antes de acessar propriedades
+    console.log('👥 Winning team:', winningTeam.filter(u => u).map(u => u.username).join(', '));
+    console.log('👥 Losing team:', losingTeam.filter(u => u).map(u => u.username).join(', '));
+    
+    // ✅ CORREÇÃO: Filtrar undefined dos times
+    const validWinningTeam = winningTeam.filter(u => u && u.id);
+    const validLosingTeam = losingTeam.filter(u => u && u.id);
+    
+    if (validWinningTeam.length === 0 || validLosingTeam.length === 0) {
+      console.error('❌ Times inválidos! Não é possível finalizar match.');
+      console.error('Winning team válido:', validWinningTeam.length, 'de', winningTeam.length);
+      console.error('Losing team válido:', validLosingTeam.length, 'de', losingTeam.length);
+      return;
+    }
     
     const record: MatchRecord = {
       id: matchState.id,
@@ -498,15 +510,17 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       captainA: matchState.captainA!.username,
       captainB: matchState.captainB!.username,
       winner,
-      teamAIds: matchState.teamA.map(u => u.id),
-      teamBIds: matchState.teamB.map(u => u.id),
-      teamASnapshot: matchState.teamA.map(u => ({
+      // ✅ Guardar apenas IDs dos jogadores válidos
+      teamAIds: (winner === 'A' ? validWinningTeam : validLosingTeam).map(u => u.id),
+      teamBIds: (winner === 'B' ? validWinningTeam : validLosingTeam).map(u => u.id),
+      // ✅ Snapshots dos times - sempre Team A e Team B (não winner/loser)
+      teamASnapshot: matchState.teamA.filter(u => u && u.id).map(u => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
         role: u.primaryRole
       })),
-      teamBSnapshot: matchState.teamB.map(u => ({
+      teamBSnapshot: matchState.teamB.filter(u => u && u.id).map(u => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
@@ -521,7 +535,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updates: Promise<any>[] = [];
     
     console.log('💰 Atualizando pontos dos vencedores...');
-    for (const w of winningTeam) {
+    for (const w of validWinningTeam) {
       // ✅ Garantir que temos o usuário atualizado
       const u = allUsersRef.current.find(user => user.id === w.id);
       if (!u) {
@@ -541,7 +555,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     console.log('💸 Atualizando pontos dos perdedores...');
-    for (const l of losingTeam) {
+    for (const l of validLosingTeam) {
       // ✅ Garantir que temos o usuário atualizado
       const u = allUsersRef.current.find(user => user.id === l.id);
       if (!u) {
