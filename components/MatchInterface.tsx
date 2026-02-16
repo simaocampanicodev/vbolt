@@ -4,6 +4,7 @@ import { useGame } from '../context/GameContext';
 import { MatchPhase } from '../types';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import Modal from './ui/Modal';
 import { getRankInfo } from '../services/gameService';
 import { MAP_IMAGES } from '../constants';
 import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User } from 'lucide-react';
@@ -19,6 +20,7 @@ const MatchInterface = () => {
   const [scoreA, setScoreA] = useState<string>('');
   const [scoreB, setScoreB] = useState<string>('');
   const [reportError, setReportError] = useState<string | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Reputation & Modal State
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -194,17 +196,14 @@ const MatchInterface = () => {
   // STRICT Height Calculation to prevent Body Scroll: 100vh - Header(80px) - Padding(approx 100px total vert)
   // We use 180px buffer. 
   return (
+    <>
     <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto h-[calc(100vh-180px)] overflow-hidden`}>
         
         {/* ⭐ NOVO: Botão Admin para sair da match */}
         {isAdmin && (
             <div className="absolute top-2 right-2 z-[70]">
                 <button
-                    onClick={() => {
-                        if (confirm('Are you sure you want to leave this match? The match will be deleted.')) {
-                            exitMatchToLobby();
-                        }
-                    }}
+                    onClick={() => setShowExitModal(true)}
                     className="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-lg backdrop-blur-sm border border-rose-500/30 transition-all"
                 >
                     [Admin] Exit to Lobby
@@ -766,6 +765,20 @@ const MatchInterface = () => {
         )}
 
     </div>
+    <Modal
+      isOpen={showExitModal}
+      onClose={() => setShowExitModal(false)}
+      title="Exit Match"
+      message="Are you sure you want to leave this match? The match will be deleted."
+      confirmText="Exit"
+      cancelText="Cancel"
+      onConfirm={() => {
+        exitMatchToLobby();
+        setShowExitModal(false);
+      }}
+      variant="warning"
+    />
+    </>
   );
 };
 

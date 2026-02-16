@@ -75,17 +75,17 @@ const Quests = () => {
                         <h4 className={`font-display font-bold text-lg leading-tight mb-1 ${themeMode === 'dark' ? 'text-zinc-100' : 'text-zinc-800'}`}>
                             {questDef.description}
                         </h4>
-                        <p className="text-xs text-zinc-500">
+                        <p className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>
                              {userQuest.completed ? "Objective Complete" : "In Progress"}
                         </p>
                     </div>
 
                     <div className="space-y-3">
-                        <div className="flex justify-between text-xs font-mono text-zinc-500">
+                        <div className={`flex justify-between text-xs font-mono ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>
                             <span>PROGRESS</span>
                             <span className={userQuest.completed ? 'text-emerald-500' : ''}>{userQuest.progress} / {questDef.target}</span>
                         </div>
-                        <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                        <div className={`h-2 w-full rounded-full overflow-hidden ${themeMode === 'dark' ? 'bg-zinc-800' : 'bg-zinc-200'}`}>
                             <div 
                                 className={`h-full transition-all duration-1000 ${userQuest.completed ? 'bg-emerald-500' : 'bg-rose-500'}`}
                                 style={{ width: `${percent}%` }}
@@ -94,7 +94,7 @@ const Quests = () => {
 
                         {userQuest.completed ? (
                              userQuest.claimed ? (
-                                <button disabled className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-500 text-xs font-bold uppercase tracking-widest cursor-default border border-transparent">
+                                <button disabled className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest cursor-default border border-transparent ${themeMode === 'dark' ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-200 text-zinc-500'}`}>
                                     COMPLETED
                                 </button>
                              ) : (
@@ -106,7 +106,7 @@ const Quests = () => {
                                 </button>
                              )
                         ) : (
-                            <button disabled className="w-full py-3 rounded-xl bg-zinc-800/50 text-zinc-600 text-xs font-bold uppercase tracking-widest cursor-not-allowed border border-white/5">
+                            <button disabled className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest cursor-not-allowed border ${themeMode === 'dark' ? 'bg-zinc-800/50 text-zinc-600 border-white/5' : 'bg-zinc-200/50 text-zinc-500 border-zinc-300'}`}>
                                 LOCKED
                             </button>
                         )}

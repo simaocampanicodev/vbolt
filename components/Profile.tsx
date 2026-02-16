@@ -5,6 +5,7 @@ import { getRankInfo, getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle, Trash2, UserPlus } from 'lucide-react';
+import Modal from './ui/Modal';
 import { GameRole } from '../types';
 import { uploadToCloudinary, removeAvatar } from '../services/cloudinary';
 
@@ -49,6 +50,10 @@ const Profile = () => {
   const [riotTagInput, setRiotTagInput] = useState(profileUser.riotTag || '');
   const [isLinkingRiot, setIsLinkingRiot] = useState(false);
   const [riotError, setRiotError] = useState<string | null>(null);
+  const [showRemoveAvatarModal, setShowRemoveAvatarModal] = useState(false);
+  const [showResetSeasonModal, setShowResetSeasonModal] = useState(false);
+  const [showAcceptRequestModal, setShowAcceptRequestModal] = useState(false);
+  const [showRejectRequestModal, setShowRejectRequestModal] = useState(false);
 
   // Sync local state when profileUser changes (e.g. navigation or external updates)
   useEffect(() => {
@@ -226,11 +231,10 @@ const Profile = () => {
 
   const handleRemoveAvatar = async () => {
     if (!isOwnProfile) return;
-    
-    if (!confirm('Are you sure you want to remove your profile photo?')) {
-      return;
-    }
-    
+    setShowRemoveAvatarModal(true);
+  };
+
+  const confirmRemoveAvatar = async () => {
     try {
       setIsUploadingAvatar(true);
       console.log('🗑️ Removendo avatar...');
@@ -361,9 +365,12 @@ const Profile = () => {
   };
 
   const handleResetSeason = () => {
-      if (confirm("ARE YOU SURE? This will reset everyone's points to 1000.")) {
-          resetSeason();
-      }
+      setShowResetSeasonModal(true);
+  };
+
+  const confirmResetSeason = () => {
+      resetSeason();
+      setShowResetSeasonModal(false);
   };
 
   return (
@@ -404,7 +411,7 @@ const Profile = () => {
       )}
 
       {/* Hero Banner */}
-      <div className="relative rounded-3xl overflow-hidden min-h-[300px] md:min-h-[250px] shadow-2xl border border-white/5">
+      <div className={`relative rounded-3xl overflow-hidden min-h-[300px] md:min-h-[250px] shadow-2xl ${themeMode === 'dark' ? 'border border-white/5' : 'border border-zinc-200'}`}>
         <div 
             className="absolute inset-0 bg-cover bg-[center_top_20%] opacity-40 transform scale-105 transition-transform duration-1000 hover:scale-100"
             style={{ backgroundImage: `url(${bannerUrl})` }}
@@ -413,7 +420,7 @@ const Profile = () => {
 
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-start md:items-end space-y-4 md:space-y-0 md:space-x-6 z-10">
             <div className="relative group">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-zinc-800 border-4 border-black/50 overflow-hidden shadow-2xl flex items-center justify-center">
+                <div className={`w-24 h-24 md:w-28 md:h-28 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center ${themeMode === 'dark' ? 'bg-zinc-800 border-4 border-black/50' : 'bg-zinc-200 border-4 border-white'}`}>
                     {profileUser.avatarUrl ? (
                         <img src={profileUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
@@ -452,7 +459,7 @@ const Profile = () => {
                     <h1 className="text-3xl md:text-4xl font-display font-bold text-white shadow-black drop-shadow-lg truncate max-w-full">{profileUser.username}</h1>
                     <span 
                         className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase border border-white/20 shadow-lg flex-shrink-0"
-                        style={{ backgroundColor: rank.color, textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)' }}
+                        style={{ backgroundColor: rank.color, textShadow: '0 3px 6px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,0.95), 0 1px 2px rgba(0,0,0,0.9)' }}
                     >
                         {rank.name}
                     </span>
@@ -482,10 +489,10 @@ const Profile = () => {
                             </span>
                         ) : currentUser.friendRequests?.some(r => r.fromId === profileUser.id) ? (
                             <div className="flex items-center gap-2">
-                                <Button size="sm" onClick={() => acceptFriendRequest(profileUser.id)} className="bg-emerald-600 hover:bg-emerald-500">
+                                <Button size="sm" onClick={() => setShowAcceptRequestModal(true)} className="bg-emerald-600 hover:bg-emerald-500">
                                     Accept Request
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => rejectFriendRequest(profileUser.id)} className="text-zinc-400 hover:text-white">
+                                <Button size="sm" variant="ghost" onClick={() => setShowRejectRequestModal(true)} className="text-zinc-400 hover:text-white">
                                     Reject
                                 </Button>
                             </div>
@@ -796,11 +803,59 @@ const Profile = () => {
 
       </div>
 
+      {/* Modals */}
+      <Modal
+        isOpen={showRemoveAvatarModal}
+        onClose={() => setShowRemoveAvatarModal(false)}
+        title="Remove Profile Photo"
+        message="Are you sure you want to remove your profile photo? This action cannot be undone."
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={confirmRemoveAvatar}
+        variant="warning"
+      />
+      <Modal
+        isOpen={showResetSeasonModal}
+        onClose={() => setShowResetSeasonModal(false)}
+        title="Reset Season"
+        message="ARE YOU SURE? This will reset everyone's points to 1000. This action cannot be undone."
+        confirmText="Reset Season"
+        cancelText="Cancel"
+        onConfirm={confirmResetSeason}
+        variant="danger"
+      />
+      <Modal
+        isOpen={showAcceptRequestModal}
+        onClose={() => setShowAcceptRequestModal(false)}
+        title="Accept Friend Request"
+        message={`Do you want to accept ${profileUser.username}'s friend request?`}
+        confirmText="Accept"
+        cancelText="Cancel"
+        onConfirm={() => {
+          acceptFriendRequest(profileUser.id);
+          setShowAcceptRequestModal(false);
+        }}
+        variant="info"
+      />
+      <Modal
+        isOpen={showRejectRequestModal}
+        onClose={() => setShowRejectRequestModal(false)}
+        title="Reject Friend Request"
+        message={`Do you want to reject ${profileUser.username}'s friend request?`}
+        confirmText="Reject"
+        cancelText="Cancel"
+        onConfirm={() => {
+          rejectFriendRequest(profileUser.id);
+          setShowRejectRequestModal(false);
+        }}
+        variant="warning"
+      />
+
       {/* Badges Section - Larger Size */}
       <Card>
         <div className="text-center mb-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Achievements</h3>
-            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">Click for details</p>
+            <h3 className={`text-sm font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}>Achievements</h3>
+            <p className={`text-[10px] uppercase tracking-widest mt-1 ${themeMode === 'dark' ? 'text-zinc-600' : 'text-zinc-500'}`}>Click for details</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {badges.map(badge => (
@@ -810,14 +865,16 @@ const Profile = () => {
                     className={`
                         flex flex-col items-center justify-center p-6 rounded-3xl border transition-all duration-300 text-center
                         ${badge.active 
-                            ? `bg-gradient-to-b from-white/10 to-white/5 border-white/20 hover:scale-105 hover:bg-white/10` 
-                            : `bg-transparent border-white/5 opacity-40 grayscale hover:opacity-60 hover:scale-105 cursor-pointer`}
+                            ? `${themeMode === 'dark' ? 'bg-gradient-to-b from-white/10 to-white/5 border-white/20 hover:bg-white/10' : 'bg-gradient-to-b from-zinc-50 to-white border-zinc-300 hover:bg-zinc-50'} hover:scale-105` 
+                            : `${themeMode === 'dark' ? 'bg-transparent border-white/5 opacity-40' : 'bg-zinc-100/50 border-zinc-200 opacity-60'} grayscale hover:opacity-60 hover:scale-105 cursor-pointer`}
                     `}
                 >
-                    <div className={`p-4 rounded-full mb-3 transition-shadow duration-300 ${badge.active ? `${badge.glowColor} shadow-[0_0_10px_rgba(0,0,0,0)]` : 'bg-white/5'}`}>
-                        {React.cloneElement(badge.icon as React.ReactElement<{ className?: string }>, { className: "w-8 h-8" })}
+                    <div className={`p-4 rounded-full mb-3 transition-shadow duration-300 ${badge.active ? `${badge.glowColor} shadow-[0_0_10px_rgba(0,0,0,0)]` : themeMode === 'dark' ? 'bg-white/5' : 'bg-zinc-200'}`}>
+                        {React.cloneElement(badge.icon as React.ReactElement<{ className?: string }>, { 
+                            className: `w-8 h-8 ${badge.active ? (themeMode === 'dark' ? 'text-white' : 'text-zinc-900') : (themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}`
+                        })}
                     </div>
-                    <span className={`text-sm font-bold truncate w-full ${badge.active ? (themeMode === 'dark' ? 'text-white' : 'text-zinc-800') : 'text-zinc-500'}`}>{badge.name}</span>
+                    <span className={`text-sm font-bold truncate w-full ${badge.active ? (themeMode === 'dark' ? 'text-white' : 'text-zinc-900') : (themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}`}>{badge.name}</span>
                 </button>
             ))}
         </div>

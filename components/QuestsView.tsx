@@ -1,16 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import Quests from './Quests';
 import Button from './ui/Button';
+import Modal from './ui/Modal';
 
 const QuestsView = () => {
   const { themeMode, isAdmin, resetDailyQuests } = useGame();
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const handleReset = () => {
-      if(confirm('This will replace current quests for you. Are you sure?')) {
-          resetDailyQuests();
-      }
+      setShowResetModal(true);
+  };
+
+  const confirmReset = () => {
+      resetDailyQuests();
+      setShowResetModal(false);
   };
 
   return (
@@ -32,6 +37,17 @@ const QuestsView = () => {
             </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Reset Quests"
+        message="This will replace current quests for you. Are you sure?"
+        confirmText="Reset"
+        cancelText="Cancel"
+        onConfirm={confirmReset}
+        variant="warning"
+      />
     </div>
   );
 };

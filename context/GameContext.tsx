@@ -1306,8 +1306,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const removeFriend = async (friendId: string) => {
-    if (!confirm("Remove friend?")) return;
-    
+    // Modal will be handled in FriendsView component
     try {
       console.log('🗑️ Removendo amigo:', friendId);
       
