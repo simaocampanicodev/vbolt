@@ -4,9 +4,9 @@ import { AGENTS, ROLES, AGENT_IMAGES, AGENT_BANNERS, MAP_IMAGES, MAPS } from '..
 import { getRankInfo, getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { GameRole } from '../types';
-import { uploadToCloudinary } from '../services/cloudinary';
+import { uploadToCloudinary, removeAvatar } from '../services/cloudinary';
 
 interface BadgeType {
   id: string;
@@ -237,6 +237,36 @@ const Profile = () => {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    if (!isOwnProfile) return;
+    
+    if (!confirm('Tem certeza que deseja remover sua foto de perfil?')) {
+      return;
+    }
+    
+    try {
+      setIsUploadingAvatar(true);
+      console.log('🗑️ Removendo avatar...');
+      
+      // Remover avatar do Cloudinary (upload imagem transparente)
+      await removeAvatar();
+      
+      console.log('💾 Removendo avatarUrl do Firestore...');
+      
+      // Remover avatarUrl do Firestore (definir como undefined)
+      await updateProfile({ avatarUrl: undefined });
+      
+      console.log('✅ Avatar removido com sucesso!');
+      alert('Foto de perfil removida com sucesso!');
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao remover avatar:', error);
+      alert(error.message || 'Erro ao remover foto. Tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   // --- IDENTITY SAVING ---
   // ⭐ CORRIGIDO: Adicionar async/await para salvar corretamente no Firestore
   const handleSaveIdentity = async () => {
@@ -417,6 +447,15 @@ const Profile = () => {
                                 <Camera className="text-white w-8 h-8" />
                             )}
                         </button>
+                        {profileUser.avatarUrl && !isUploadingAvatar && (
+                            <button 
+                                onClick={handleRemoveAvatar}
+                                className="absolute -bottom-2 -right-2 w-8 h-8 bg-rose-600 hover:bg-rose-500 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
+                                title="Remover foto"
+                            >
+                                <Trash2 className="text-white w-4 h-4" />
+                            </button>
+                        )}
                     </>
                 )}
             </div>

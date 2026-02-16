@@ -476,10 +476,21 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const finalizeMatch = async (finalScore: MatchScore) => {
     if (!matchState) return;
+    
+    console.log('🏁 Finalizando match...');
+    console.log('📊 Score final:', finalScore);
+    
     const winner = finalScore.scoreA > finalScore.scoreB ? 'A' : 'B';
+    console.log(`🏆 Vencedor: Team ${winner}`);
+    
     await updateMatch({ phase: MatchPhase.FINISHED, winner, resultReported: true });
+    
     const winningTeam = winner === 'A' ? matchState.teamA : matchState.teamB;
     const losingTeam = winner === 'A' ? matchState.teamB : matchState.teamA;
+    
+    console.log('👥 Winning team:', winningTeam.map(u => u.username));
+    console.log('👥 Losing team:', losingTeam.map(u => u.username));
+    
     const record: MatchRecord = {
       id: matchState.id,
       date: Date.now(),
@@ -503,32 +514,63 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       })),
       score: `${finalScore.scoreA}-${finalScore.scoreB}`
     };
+    
     await setDoc(doc(db, COLLECTIONS.MATCHES, matchState.id), { ...record, match_date: serverTimestamp() });
+    
+    // ✅ CORRIGIDO: Processar atualizações de pontos de forma mais segura
     const updates: Promise<any>[] = [];
-    winningTeam.forEach(w => {
+    
+    console.log('💰 Atualizando pontos dos vencedores...');
+    for (const w of winningTeam) {
+      // ✅ Garantir que temos o usuário atualizado
       const u = allUsersRef.current.find(user => user.id === w.id);
-      if (!u) return;
+      if (!u) {
+        console.warn(`⚠️ Usuário vencedor não encontrado: ${w.id} (${w.username})`);
+        continue;
+      }
+      
       const newPoints = calculatePoints(u.points, true, u.winstreak + 1);
+      console.log(`  📈 ${u.username}: ${u.points} → ${newPoints} (+${newPoints - u.points})`);
+      
       updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), {
         points: newPoints,
         lastPointsChange: newPoints - u.points,
         wins: u.wins + 1,
         winstreak: u.winstreak + 1
       }));
-    });
-    losingTeam.forEach(l => {
+    }
+    
+    console.log('💸 Atualizando pontos dos perdedores...');
+    for (const l of losingTeam) {
+      // ✅ Garantir que temos o usuário atualizado
       const u = allUsersRef.current.find(user => user.id === l.id);
-      if (!u) return;
+      if (!u) {
+        console.warn(`⚠️ Usuário perdedor não encontrado: ${l.id} (${l.username})`);
+        continue;
+      }
+      
       const newPoints = calculatePoints(u.points, false, 0);
+      console.log(`  📉 ${u.username}: ${u.points} → ${newPoints} (${newPoints - u.points})`);
+      
       updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), {
         points: newPoints,
         lastPointsChange: newPoints - u.points,
         losses: u.losses + 1,
         winstreak: 0
       }));
-    });
+    }
+    
+    console.log(`💾 Aplicando ${updates.length} atualizações...`);
     await Promise.all(updates);
-    setTimeout(() => deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id)), 10000);
+    console.log('✅ Pontos atualizados!');
+    
+    console.log('🗑️ Match será deletada em 10 segundos...');
+    setTimeout(() => {
+      deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+      console.log('🗑️ Match deletada do Firestore');
+    }, 10000);
+    
+    console.log('🏁 Match finalizada com sucesso!');
   };
 
   // [Quests code continua igual...]

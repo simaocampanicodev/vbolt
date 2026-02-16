@@ -68,10 +68,60 @@ export const uploadToCloudinary = async (file: File): Promise<string> => {
 };
 
 /**
- * Deleta uma imagem do Cloudinary (opcional)
- * Nota: Requer configuração adicional de API Key e Secret
+ * Remove o avatar atual do usuário
+ * @returns URL com timestamp para forçar reload
  */
-export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
-  // Implementar se necessário no futuro
-  console.log('🗑️ Delete não implementado ainda');
+export const removeAvatar = async (): Promise<void> => {
+  try {
+    console.log('🗑️ Removendo avatar...');
+    
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    // O Cloudinary não permite deletar via unsigned upload
+    // Então vamos fazer upload de uma imagem transparente 1x1 pixel
+    // Isso efetivamente "remove" o avatar visualmente
+    
+    // Criar imagem transparente 1x1 pixel
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, 1, 1);
+    }
+    
+    // Converter canvas para blob
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+      }, 'image/png');
+    });
+    
+    // Fazer upload da imagem transparente
+    const formData = new FormData();
+    formData.append('file', blob, 'transparent.png');
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('public_id', `avatars/${user.uid}`);
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: 'POST',
+        body: formData
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Erro ao remover avatar');
+    }
+    
+    console.log('✅ Avatar removido com sucesso!');
+    
+  } catch (error: any) {
+    console.error('❌ Erro ao remover avatar:', error);
+    throw new Error(error.message || 'Erro ao remover avatar');
+  }
 };
