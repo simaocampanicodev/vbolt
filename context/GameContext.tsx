@@ -665,7 +665,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const shuffled = [...arr].sort(() => Math.random() - 0.5);
         return shuffled.slice(0, n).map(q => ({ questId: q.id, progress: 0, completed: false, claimed: false }));
       };
-      next = [...pick(dailyQuests, 2), ...pick(monthlyQuests, 2), ...uniqueQuests.map(q => ({ questId: q.id, progress: 0, completed: false, claimed: false }))];
+      // Preserve unique quests from current user's active quests instead of resetting them
+      const currentUniqueQuests = (currentUser.activeQuests || []).filter(uq => 
+        QUEST_POOL.find(q => q.id === uq.questId)?.category === 'UNIQUE'
+      );
+      next = [...pick(dailyQuests, 2), ...pick(monthlyQuests, 2), ...currentUniqueQuests];
+      // Add missing unique quests
+      const existingUniqueIds = currentUniqueQuests.map(uq => uq.questId);
+      const missingUnique = uniqueQuests.filter(q => !existingUniqueIds.includes(q.id));
+      missingUnique.forEach(q => next.push({ questId: q.id, progress: 0, completed: false, claimed: false }));
     } else {
       next = (currentUser.activeQuests || []).map(uq => {
         const def = QUEST_POOL.find(q => q.id === uq.questId);

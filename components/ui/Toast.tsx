@@ -51,7 +51,7 @@ const ToastItem: React.FC<ToastProps> = ({ toast, onRemove, themeMode }) => {
   return (
     <div
       className={`
-        flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-lg
+        flex items-center gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-lg
         ${colors[toast.type]}
         ${themeMode === 'dark' ? 'bg-black/40' : 'bg-white/60'}
         transition-all duration-300 ease-out
@@ -59,7 +59,7 @@ const ToastItem: React.FC<ToastProps> = ({ toast, onRemove, themeMode }) => {
         min-w-[300px] max-w-[400px]
       `}
     >
-      <div className="flex-shrink-0 mt-0.5">
+      <div className="flex-shrink-0">
         {icons[toast.type]}
       </div>
       <div className="flex-1 text-sm font-medium">

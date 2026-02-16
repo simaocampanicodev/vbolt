@@ -35,7 +35,7 @@ const Modal: React.FC<ModalProps> = ({
 
   const variantColors = {
     danger: 'border-red-500/30',
-    warning: 'border-yellow-500/30',
+    warning: 'border-red-500/30',
     info: 'border-blue-500/30'
   };
 

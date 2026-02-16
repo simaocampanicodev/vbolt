@@ -416,7 +416,7 @@ const Profile = () => {
             className="absolute inset-0 bg-cover bg-[center_top_20%] opacity-40 transform scale-105 transition-transform duration-1000 hover:scale-100"
             style={{ backgroundImage: `url(${bannerUrl})` }}
         ></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/90"></div>
+        <div className={`absolute inset-0 ${themeMode === 'dark' ? 'bg-gradient-to-b from-transparent via-black/40 to-black/90' : 'bg-gradient-to-b from-transparent via-white/20 to-white/60'}`}></div>
 
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-start md:items-end space-y-4 md:space-y-0 md:space-x-6 z-10">
             <div className="relative group">
