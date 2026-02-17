@@ -109,22 +109,22 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 .stagger-4 { animation-delay: 0.2s; }
 .stagger-5 { animation-delay: 0.25s; }
 
-/* Dashboard scrollbars – mais visíveis e fáceis de ler */
+/* Dashboard scrollbars – fundo cinzento escuro para ser legível */
 .dashboard-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(244, 63, 94, 0.5) rgba(255, 255, 255, 0.06);
+  scrollbar-color: rgba(244, 63, 94, 0.5) #27272a;
 }
 .dashboard-scroll::-webkit-scrollbar {
   width: 10px;
 }
 .dashboard-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.06);
+  background: #27272a;
   border-radius: 5px;
 }
 .dashboard-scroll::-webkit-scrollbar-thumb {
   background: rgba(244, 63, 94, 0.45);
   border-radius: 5px;
-  border: 2px solid rgba(255, 255, 255, 0.04);
+  border: 2px solid #27272a;
 }
 .dashboard-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(244, 63, 94, 0.65);

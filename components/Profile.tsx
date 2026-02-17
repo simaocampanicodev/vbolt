@@ -466,21 +466,24 @@ const Profile = () => {
                         <BadgeCheck className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
                       </span>
                     )}
-                    {(profileUser.role === 'owner' || profileUser.role === 'mod' || profileUser.role === 'dev' || profileUser.role === 'helper') && (
-                      <span 
-                        className={`flex-shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          profileUser.role === 'owner' ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50 shadow-[0_0_8px_rgba(245,158,11,0.2)]' :
-                          profileUser.role === 'mod' ? 'bg-amber-500/20 text-amber-200/90 border border-amber-500/40' :
-                          profileUser.role === 'dev' ? 'bg-violet-500/30 text-violet-300 border border-violet-500/40' :
-                          'bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
-                        }`}
-                        title={profileUser.role === 'owner' ? 'Owner' : profileUser.role === 'mod' ? 'Moderator' : profileUser.role === 'dev' ? 'Developer' : 'Helper'}
-                      >
-                        {profileUser.role === 'owner' && <Crown className="w-3 h-3" />}
-                        {profileUser.role === 'mod' && <Shield className="w-3 h-3" />}
-                        {profileUser.role === 'dev' && <Code className="w-3 h-3" />}
-                        {profileUser.role === 'helper' && <HelpCircle className="w-3 h-3" />}
-                        {profileUser.role}
+                    {profileUser.role === 'owner' && (
+                      <span className="flex-shrink-0 text-amber-400" title="Owner">
+                        <Crown className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
+                      </span>
+                    )}
+                    {profileUser.role === 'mod' && (
+                      <span className="flex-shrink-0 text-amber-300" title="Moderator">
+                        <Shield className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
+                      </span>
+                    )}
+                    {profileUser.role === 'dev' && (
+                      <span className="flex-shrink-0 text-violet-400" title="Developer">
+                        <Code className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
+                      </span>
+                    )}
+                    {profileUser.role === 'helper' && (
+                      <span className="flex-shrink-0 text-emerald-400" title="Helper">
+                        <HelpCircle className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
                       </span>
                     )}
                     {!isOwnProfile && (
