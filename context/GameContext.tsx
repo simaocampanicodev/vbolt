@@ -629,21 +629,73 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     console.log('📋 Team A IDs do Firestore:', teamAIds);
     console.log('📋 Team B IDs do Firestore:', teamBIds);
+    console.log('📊 Total allUsersRef.current:', allUsersRef.current.length);
     
-    // ⭐ CONVERTER IDs PARA USERS DO allUsersRef
-    const winningTeamIds = winner === 'A' ? teamAIds : teamBIds;
-    const losingTeamIds = winner === 'A' ? teamBIds : teamAIds;
+    // ⭐ FUNÇÃO HELPER: Procurar user em allUsersRef, se não encontrar, carregar do Firestore
+    const getUser = async (id: string): Promise<User | null> => {
+      // Tentar encontrar em allUsersRef primeiro
+      let user = allUsersRef.current.find(u => u.id === id);
+      if (user) {
+        console.log(`  ✅ User ${id} (${user.username}) encontrado em allUsersRef`);
+        return user;
+      }
+      
+      // Se não encontrar, carregar do Firestore
+      console.log(`  🔍 User ${id} não em allUsersRef, carregando do Firestore...`);
+      try {
+        const userSnap = await getDoc(doc(db, COLLECTIONS.USERS, id));
+        if (userSnap.exists()) {
+          const d = userSnap.data();
+          const loadedUser: User = {
+            id,
+            username: d.username,
+            email: d.email,
+            points: d.points || INITIAL_POINTS,
+            xp: d.xp || 0,
+            level: d.level || 1,
+            reputation: d.reputation || 10,
+            wins: d.wins || 0,
+            losses: d.losses || 0,
+            winstreak: d.winstreak || 0,
+            primaryRole: d.primary_role as GameRole,
+            secondaryRole: d.secondary_role as GameRole,
+            topAgents: d.top_agents || [],
+            isBot: false,
+            activeQuests: d.active_quests || [],
+            friends: d.friends || [],
+            friendRequests: d.friend_requests || [],
+            friendQuestCountedIds: d.friend_quest_counted_ids || [],
+            avatarUrl: d.avatarUrl,
+            bannerUrl: d.bannerUrl,
+            riotId: d.riotId,
+            riotTag: d.riotTag,
+            lastPointsChange: d.lastPointsChange,
+            lastSeenAt: d.lastSeenAt,
+            role: (d.role as UserRole) || 'user',
+            verified: !!d.verified
+          };
+          console.log(`  ✅ User ${id} (${loadedUser.username}) carregado do Firestore`);
+          return loadedUser;
+        }
+      } catch (e) {
+        console.error(`  ❌ Erro ao carregar user ${id} do Firestore:`, e);
+      }
+      return null;
+    };
     
-    const validWinningTeam = winningTeamIds
-      .map((id: string) => allUsersRef.current.find(u => u.id === id))
-      .filter((u: any) => u && u.id && u.username);
+    // ⭐ CONVERTER IDs PARA USERS
+    console.log('🔄 Convertendo IDs das equipas para Users...');
+    const teamAUsers = await Promise.all(teamAIds.map((id: string) => getUser(id)))
+      .then(users => users.filter((u: any) => u && u.id && u.username));
     
-    const validLosingTeam = losingTeamIds
-      .map((id: string) => allUsersRef.current.find(u => u.id === id))
-      .filter((u: any) => u && u.id && u.username);
+    const teamBUsers = await Promise.all(teamBIds.map((id: string) => getUser(id)))
+      .then(users => users.filter((u: any) => u && u.id && u.username));
     
-    console.log(`✅ Equipa vencedora: ${validWinningTeam.map((u: any) => u.username).join(', ')} (${validWinningTeam.length} jogadores)`);
-    console.log(`✅ Equipa perdedora: ${validLosingTeam.map((u: any) => u.username).join(', ')} (${validLosingTeam.length} jogadores)`);
+    const validWinningTeam = winner === 'A' ? teamAUsers : teamBUsers;
+    const validLosingTeam = winner === 'A' ? teamBUsers : teamAUsers;
+    
+    console.log(`✅ Equipa vencedora (Team ${winner}): ${validWinningTeam.map((u: any) => u.username).join(', ')} (${validWinningTeam.length} jogadores)`);
+    console.log(`✅ Equipa perdedora (Team ${winner === 'A' ? 'B' : 'A'}): ${validLosingTeam.map((u: any) => u.username).join(', ')} (${validLosingTeam.length} jogadores)`);
     
     if (validWinningTeam.length === 0 || validLosingTeam.length === 0) {
       console.error('❌ Times inválidos! Não é possível finalizar match.');
@@ -652,7 +704,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     
-    
     const record: MatchRecord = {
       id: matchState.id,
       date: Date.now(),
@@ -660,78 +711,74 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       captainA: matchState.captainA!.username,
       captainB: matchState.captainB!.username,
       winner,
-      teamAIds: (winner === 'A' ? validWinningTeam : validLosingTeam).map((u: any) => u.id),
-      teamBIds: (winner === 'B' ? validWinningTeam : validLosingTeam).map((u: any) => u.id),
-      teamASnapshot: validWinningTeam.map((u: any) => ({
+      teamAIds: teamAUsers.map((u: any) => u.id),
+      teamBIds: teamBUsers.map((u: any) => u.id),
+      teamASnapshot: teamAUsers.map((u: any) => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
         role: u.primaryRole
       })),
-      teamBSnapshot: validLosingTeam.map((u: any) => ({
+      teamBSnapshot: teamBUsers.map((u: any) => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
         role: u.primaryRole
       })),
       score: `${finalScore.scoreA}-${finalScore.scoreB}`
-      // playerPointsChanges serão adicionados após cálculo
     };
     
     // ✅ Calcular e armazenar mudanças de pontos individuais
     const pointsChanges: any[] = [];
     const updates: Promise<any>[] = [];
     
+    console.log('💰 Calculando pontos para equipa vencedora...');
     for (const w of validWinningTeam) {
-      const u = allUsersRef.current.find(user => user.id === w.id);
-      if (!u) {
-        console.warn(`⚠️ Usuário vencedor não encontrado: ${w.id}`);
-        continue;
-      }
-      const newPoints = calculatePoints(u.points, true, u.winstreak + 1);
-      const pointsChange = newPoints - u.points;
+      const newPoints = calculatePoints(w.points, true, w.winstreak + 1);
+      const pointsChange = newPoints - w.points;
+      
+      console.log(`  ✅ ${w.username}: ${w.points} → ${newPoints} (${pointsChange >= 0 ? '+' : ''}${pointsChange})`);
       
       pointsChanges.push({
-        playerId: u.id,
-        playerName: u.username,
+        playerId: w.id,
+        playerName: w.username,
         pointsChange,
         newTotal: newPoints,
         isWinner: true
       });
       
-      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), {
+      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, w.id), {
         points: newPoints,
         lastPointsChange: pointsChange,
-        wins: u.wins + 1,
-        winstreak: u.winstreak + 1
+        wins: w.wins + 1,
+        winstreak: w.winstreak + 1
       }));
     }
     
+    console.log('💰 Calculando pontos para equipa perdedora...');
     for (const l of validLosingTeam) {
-      const u = allUsersRef.current.find(user => user.id === l.id);
-      if (!u) {
-        console.warn(`⚠️ Usuário perdedor não encontrado: ${l.id}`);
-        continue;
-      }
-      const newPoints = calculatePoints(u.points, false, 0);
-      const pointsChange = newPoints - u.points;
+      const newPoints = calculatePoints(l.points, false, 0);
+      const pointsChange = newPoints - l.points;
+      
+      console.log(`  ❌ ${l.username}: ${l.points} → ${newPoints} (${pointsChange >= 0 ? '+' : ''}${pointsChange})`);
       
       pointsChanges.push({
-        playerId: u.id,
-        playerName: u.username,
+        playerId: l.id,
+        playerName: l.username,
         pointsChange,
         newTotal: newPoints,
         isWinner: false
       });
       
-      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, u.id), {
+      updates.push(updateDoc(doc(db, COLLECTIONS.USERS, l.id), {
         points: newPoints,
         lastPointsChange: pointsChange,
-        losses: u.losses + 1,
+        losses: l.losses + 1,
         winstreak: 0
       }));
     }
     
+    console.log(`📊 Total de updates a executar: ${updates.length}`);
     await Promise.all(updates);
     console.log('✅ Pontos atualizados para todos os jogadores');
     console.log('📊 Mudanças:', pointsChanges.map(p => `${p.playerName}: ${p.pointsChange >= 0 ? '+' : ''}${p.pointsChange}`).join(', '));
@@ -753,10 +800,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       reportA: scoreResult,
       reportB: scoreResult
     });
-    console.log('✅ Match finalizada e match ended screen enviada para todos os jogadores');
+    console.log('✅ Match finalizada e enviando para todos os jogadores');
     
     // ⭐ Atualizar estado local imediatamente para refletir mudanças de pontos
-    console.log('🔄 Atualizando estado local do matchState...');
+    console.log('🔄 Atualizando estado local do matchState para FINISHED...');
     setMatchState(prev => prev ? {
       ...prev,
       phase: MatchPhase.FINISHED,
@@ -766,6 +813,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       reportA: scoreResult,
       reportB: scoreResult
     } : null);
+    console.log('✅ Estado local atualizado - match ended screen deve aparecer');
     
     // ⭐ Deletar match após 60 segundos (não 10s)
     setTimeout(() => {
