@@ -712,23 +712,23 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const record: MatchRecord = {
       id: matchState.id,
       date: Date.now(),
-      map: matchState.selectedMap!,
-      captainA: matchState.captainA!.username,
-      captainB: matchState.captainB!.username,
+      map: matchState.selectedMap || 'Unknown',
+      captainA: matchState.captainA ? matchState.captainA.username : (teamAUsers[0]?.username || 'Unknown'),
+      captainB: matchState.captainB ? matchState.captainB.username : (teamBUsers[0]?.username || 'Unknown'),
       winner,
       teamAIds: teamAUsers.map((u: any) => u.id),
       teamBIds: teamBUsers.map((u: any) => u.id),
       teamASnapshot: teamAUsers.map((u: any) => ({
         id: u.id,
-        username: u.username,
-        avatarUrl: u.avatarUrl,
-        role: u.primaryRole
+        username: u.username || 'Unknown',
+        avatarUrl: u.avatarUrl || null,
+        role: u.primaryRole || null
       })),
       teamBSnapshot: teamBUsers.map((u: any) => ({
         id: u.id,
-        username: u.username,
-        avatarUrl: u.avatarUrl,
-        role: u.primaryRole
+        username: u.username || 'Unknown',
+        avatarUrl: u.avatarUrl || null,
+        role: u.primaryRole || null
       })),
       score: `${finalScore.scoreA}-${finalScore.scoreB}`
     };
@@ -775,8 +775,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // ⭐ Adicionar pontos ao record antes de salvar
     const recordWithPoints: MatchRecord = { ...record, playerPointsChanges: pointsChanges };
     
-    await setDoc(doc(db, COLLECTIONS.MATCHES, matchState.id), { ...recordWithPoints, match_date: serverTimestamp() });
-    console.log('✅ Match salva no histórico');
+    try {
+      await setDoc(doc(db, COLLECTIONS.MATCHES, matchState.id), { ...recordWithPoints, match_date: serverTimestamp() });
+      console.log('✅ Match salva no histórico');
+    } catch (err: any) {
+      console.error('❌ Falha ao salvar match no histórico:', err);
+      // Não abortar o fluxo — garantimos que a match é finalizada no estado activo
+      showToast('Failed to save match history (check console). Match will still finish locally.', 'warning', 7000);
+    }
     
     // ⭐ Armazenar mudanças de pontos no estado da match para o UI exibir
     const scoreResult = { scoreA: finalScore.scoreA, scoreB: finalScore.scoreB };
