@@ -542,7 +542,7 @@ const MatchInterface = () => {
                         </div>
 
                         {/* Match Control / Match Panel (collapsible) */}
-                        <Card className="flex flex-col items-stretch py-3 shrink-0 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <Card className="flex flex-col items-center py-3 shrink-0 max-h-[400px] overflow-y-auto custom-scrollbar">
                             <div className="w-full flex items-center justify-between px-4">
                               <h3 className="uppercase tracking-widest text-zinc-400 text-[11px]">Match Panel</h3>
                               <button
@@ -555,7 +555,7 @@ const MatchInterface = () => {
                             </div>
 
                             {!matchPanelOpen ? null : !canReport ? (
-                                <div className="w-full max-w-md mx-auto text-center space-y-5 pt-3">
+                                <div className="w-full max-w-md flex flex-col items-center text-center space-y-5 pt-3 px-4">
                                     <div className="flex flex-col items-center space-y-3">
                                         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 grid place-items-center">
                                             <Lock className="w-6 h-6 text-emerald-400" />
@@ -570,9 +570,9 @@ const MatchInterface = () => {
                                         </div>
                                     </div>
 
-                                    {/* Code Input/Display */}
+                                    {/* Code Input/Display - centered */}
                                     {isCaptain ? (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full">
                                             <input
                                                 type="text"
                                                 value={localMatchCode}
@@ -581,9 +581,9 @@ const MatchInterface = () => {
                                                   setLocalMatchCode(filtered);
                                                 }}
                                                 placeholder="Enter lobby code..."
-                                                className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-emerald-400 font-mono tracking-[0.25em]"
+                                                className="w-full sm:max-w-[200px] bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-emerald-400 font-mono tracking-[0.25em] text-center"
                                             />
-                                            <div className="flex flex-col gap-1">
+                                            <div className="flex flex-row sm:flex-col items-center gap-2">
                                               <button
                                                   type="button"
                                                   aria-label="Save match code"
@@ -627,8 +627,8 @@ const MatchInterface = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-4 py-3 font-mono text-base tracking-[0.25em] text-zinc-200 text-center">
+                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full">
+                                            <div className="w-full sm:max-w-[200px] bg-black/40 border border-white/10 rounded-2xl px-4 py-3 font-mono text-base tracking-[0.25em] text-zinc-200 text-center">
                                                 {matchState.matchCode ? matchState.matchCode : 'WAITING...'}
                                             </div>
                                             <button
@@ -656,14 +656,14 @@ const MatchInterface = () => {
                                         </div>
                                     )}
 
-                                    {/* Countdown (bigger + green) */}
+                                    {/* Countdown (bigger + green) - centered */}
                                     {(() => {
                                         const remainingMs = Math.max(0, (20 * 60 * 1000) - timeLeft);
                                         const mins = Math.floor(remainingMs / 60000);
                                         const secs = Math.floor((remainingMs % 60000) / 1000);
                                         const t = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
                                         return (
-                                            <div className="pt-2">
+                                            <div className="pt-2 flex flex-col items-center">
                                                 <div className="text-emerald-400 font-mono font-bold text-2xl md:text-3xl">
                                                     {t}
                                                 </div>
@@ -680,8 +680,8 @@ const MatchInterface = () => {
                                     })()}
                                 </div>
                             ) : (
-                                <div className="w-full max-w-md space-y-4 text-center">
-                                    {/* ⭐ NOVO: Verificar se jogador já reportou */}
+                                <div className="w-full max-w-md mx-auto flex flex-col items-center space-y-4 text-center pt-3 px-4">
+                                    {/* Verificar se jogador já reportou */}
                                     {(matchState.playerReports || []).some(r => r.playerId === currentUser.id) ? (
                                         // ⭐ Jogador já reportou - mostrar status de verificação
                                         <div className="space-y-4">
@@ -707,8 +707,8 @@ const MatchInterface = () => {
                                                 </div>
                                             </div>
 
-                                            {/* ⭐ Mostrar quem já votou e o que votaram */}
-                                            <div className="space-y-2 mt-6">
+                                            {/* Mostrar quem já votou e o que votaram - centered */}
+                                            <div className="space-y-2 mt-6 w-full max-w-sm mx-auto">
                                                 <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Votes Submitted:</p>
                                                 <div className="space-y-2">
                                                     {(matchState.playerReports || []).map((report, index) => (
@@ -744,7 +744,7 @@ const MatchInterface = () => {
                                                 
                                                 if (leadingResult && maxVotes >= 2) {
                                                     return (
-                                                        <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg">
+                                                        <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg w-full max-w-sm mx-auto">
                                                             <p className="text-xs text-rose-500 font-bold">
                                                                 Leading Result: {leadingResult[0]} ({maxVotes} votes)
                                                             </p>
@@ -785,9 +785,9 @@ const MatchInterface = () => {
                                                     </div>
                                             </div>
 
-                                            {/* ⭐ Mostrar votos já existentes antes de submeter */}
+                                            {/* Mostrar votos já existentes antes de submeter - centered */}
                                             {(matchState.playerReports || []).length > 0 && (
-                                                <div className="mt-4 p-3 bg-zinc-900/50 rounded-lg border border-white/5">
+                                                <div className="mt-4 p-3 bg-zinc-900/50 rounded-lg border border-white/5 w-full max-w-sm mx-auto">
                                                     <p className="text-xs text-zinc-500 mb-2">{(matchState.playerReports || []).length} player{(matchState.playerReports || []).length > 1 ? 's' : ''} already voted:</p>
                                                     <div className="space-y-1">
                                                         {(matchState.playerReports || []).map((report, index) => (
@@ -808,7 +808,7 @@ const MatchInterface = () => {
 
                                             <Button 
                                                 variant="primary" 
-                                                className="w-full mt-2"
+                                                className="w-full max-w-xs mx-auto mt-2"
                                                 onClick={handleReportSubmit}
                                             >
                                                 Submit Result
