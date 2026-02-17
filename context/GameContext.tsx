@@ -614,22 +614,44 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const winner = finalScore.scoreA > finalScore.scoreB ? 'A' : 'B';
     console.log(`🏆 Vencedor: Team ${winner}`);
     
-    // ✅ Validar que teamA e teamB existem e são arrays (inclui test matches com qualquer número de jogadores)
-    if (!Array.isArray(matchState.teamA) || !Array.isArray(matchState.teamB)) {
-      console.error('❌ Times não são arrays válidos!');
+    // ⭐ LER DIRETAMENTE DO FIRESTORE PARA OBTER IDs DAS EQUIPAS
+    const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id);
+    const matchSnap = await getDoc(matchRef);
+    
+    if (!matchSnap.exists()) {
+      console.error('❌ Match não encontrada no Firestore!');
       return;
     }
     
-    const winningTeam = winner === 'A' ? matchState.teamA : matchState.teamB;
-    const losingTeam = winner === 'A' ? matchState.teamB : matchState.teamA;
+    const firestoreData = matchSnap.data();
+    const teamAIds = firestoreData.teamA || [];
+    const teamBIds = firestoreData.teamB || [];
     
-    const validWinningTeam = (winningTeam || []).filter((u: any) => u && u.id && u.username);
-    const validLosingTeam = (losingTeam || []).filter((u: any) => u && u.id && u.username);
+    console.log('📋 Team A IDs do Firestore:', teamAIds);
+    console.log('📋 Team B IDs do Firestore:', teamBIds);
+    
+    // ⭐ CONVERTER IDs PARA USERS DO allUsersRef
+    const winningTeamIds = winner === 'A' ? teamAIds : teamBIds;
+    const losingTeamIds = winner === 'A' ? teamBIds : teamAIds;
+    
+    const validWinningTeam = winningTeamIds
+      .map((id: string) => allUsersRef.current.find(u => u.id === id))
+      .filter((u: any) => u && u.id && u.username);
+    
+    const validLosingTeam = losingTeamIds
+      .map((id: string) => allUsersRef.current.find(u => u.id === id))
+      .filter((u: any) => u && u.id && u.username);
+    
+    console.log(`✅ Equipa vencedora: ${validWinningTeam.map((u: any) => u.username).join(', ')} (${validWinningTeam.length} jogadores)`);
+    console.log(`✅ Equipa perdedora: ${validLosingTeam.map((u: any) => u.username).join(', ')} (${validLosingTeam.length} jogadores)`);
     
     if (validWinningTeam.length === 0 || validLosingTeam.length === 0) {
       console.error('❌ Times inválidos! Não é possível finalizar match.');
+      console.error('validWinningTeam:', validWinningTeam);
+      console.error('validLosingTeam:', validLosingTeam);
       return;
     }
+    
     
     const record: MatchRecord = {
       id: matchState.id,
@@ -640,13 +662,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       winner,
       teamAIds: (winner === 'A' ? validWinningTeam : validLosingTeam).map((u: any) => u.id),
       teamBIds: (winner === 'B' ? validWinningTeam : validLosingTeam).map((u: any) => u.id),
-      teamASnapshot: (matchState.teamA || []).filter((u: any) => u && u.id && u.username).map((u: any) => ({
+      teamASnapshot: validWinningTeam.map((u: any) => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
         role: u.primaryRole
       })),
-      teamBSnapshot: (matchState.teamB || []).filter((u: any) => u && u.id && u.username).map((u: any) => ({
+      teamBSnapshot: validLosingTeam.map((u: any) => ({
         id: u.id,
         username: u.username,
         avatarUrl: u.avatarUrl,
@@ -733,9 +755,23 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     console.log('✅ Match finalizada e match ended screen enviada para todos os jogadores');
     
+    // ⭐ Atualizar estado local imediatamente para refletir mudanças de pontos
+    console.log('🔄 Atualizando estado local do matchState...');
+    setMatchState(prev => prev ? {
+      ...prev,
+      phase: MatchPhase.FINISHED,
+      winner,
+      resultReported: true,
+      playerPointsChanges: pointsChanges,
+      reportA: scoreResult,
+      reportB: scoreResult
+    } : null);
+    
+    // ⭐ Deletar match após 60 segundos (não 10s)
     setTimeout(() => {
+      console.log('🗑️ Deletando match do Firestore após 60 segundos');
       deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
-    }, 10000);
+    }, 60000);
   };
 
   // [Quests code continua igual...]
@@ -1458,6 +1494,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resetMatch = async () => {
+    console.log('🏠 Voltando ao lobby...');
+    currentMatchIdRef.current = null;
+    setMatchState(null);
     if (currentMatchIdRef.current) await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, currentMatchIdRef.current));
   };
 
