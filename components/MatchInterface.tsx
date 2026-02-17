@@ -71,7 +71,8 @@ const MatchInterface = () => {
   };
 
   const minutesPassed = Math.floor(timeLeft / 60000);
-  const canReport = minutesPassed >= 1; // ⭐ Para testes: 1 minuto em vez de 20
+  const isTestMatch = matchState.id?.startsWith?.('testmatch_');
+  const canReport = isTestMatch || minutesPassed >= 1; // ⭐ Test matches: permitir report imediato
 
   // Determine Result Title & Color
   const teamA = matchState.teamA || [];
@@ -90,7 +91,7 @@ const MatchInterface = () => {
       }
   }
 
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
       const sA = parseInt(scoreA);
       const sB = parseInt(scoreB);
 
@@ -113,10 +114,15 @@ const MatchInterface = () => {
       }
 
       setReportError(null);
-      const result = reportResult(sA, sB);
+      const result = await reportResult(sA, sB);
       if (!result.success) {
           setReportError(result.message || "Error submitting report");
+          return;
       }
+
+      // Clear inputs on success (UI feedback)
+      setScoreA('');
+      setScoreB('');
   };
 
   const handleSendMessage = (e: React.FormEvent) => {

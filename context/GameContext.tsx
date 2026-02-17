@@ -9,7 +9,7 @@ import { auth, logoutUser } from '../services/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot,
-  query, where, orderBy, limit, serverTimestamp, Timestamp
+  query, where, orderBy, limit, serverTimestamp, Timestamp, arrayUnion
 } from 'firebase/firestore';
 import { db } from '../lib/firestore';
 import { registerUser as registerUserInDb, updateUserProfile as updateUserInDb } from '../services/authService';
@@ -624,6 +624,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     const firestoreData = matchSnap.data();
+    // 🚨 Se o servidor já marcou como resultReported, evitar finalizações duplicadas
+    if (firestoreData.resultReported) {
+      console.log('⚠️ Match já finalizada no servidor — a operação de finalização será ignorada.');
+      return;
+    }
     const teamAIds = firestoreData.teamA || [];
     const teamBIds = firestoreData.teamB || [];
     
@@ -1270,17 +1275,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const reportResult = async (scoreA: number, scoreB: number): Promise<{ success: boolean, message?: string }> => {
     if (!matchState) return { success: false };
-    
-    console.log('📊 Reportando resultado:', { scoreA, scoreB });
-    
-    // ⭐ NOVO SISTEMA: Verificar se já reportou
-    const existingReport = matchState.playerReports.find(r => r.playerId === currentUser.id);
-    if (existingReport) {
-      console.log('⚠️ Jogador já reportou resultado');
-      return { success: false, message: "You have already submitted a result." };
+
+    console.log('📊 Reportando resultado (inicio):', { scoreA, scoreB });
+
+    // Verificar localmente se o jogador já reportou (rápido feedback)
+    const alreadyLocal = (matchState.playerReports || []).some(r => r.playerId === currentUser.id);
+    if (alreadyLocal) {
+      console.log('⚠️ Jogador já reportou (estado local)');
+      return { success: false, message: 'You have already submitted a result.' };
     }
-    
-    // ⭐ Criar novo report do jogador
+
     const newReport = {
       playerId: currentUser.id,
       playerName: currentUser.username,
@@ -1288,78 +1292,69 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       scoreB,
       timestamp: Date.now()
     };
-    
-    console.log('📝 Novo report:', newReport);
-    
-    // ⭐ Adicionar ao array de reports
-    const updatedReports = [...matchState.playerReports, newReport];
-    
-    console.log(`📊 Total de reports: ${updatedReports.length}`);
-    
-    // ⭐ VERIFICAR SE ALGUM RESULTADO TEM 3+ VOTOS
+
+    console.log('📝 Novo report (preparing to append atomically):', newReport);
+
+    // Append atómico para evitar lost-writes quando vários clientes submetem em simultâneo
+    try {
+      await updateDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id), {
+        playerReports: arrayUnion(newReport),
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('❌ Falha ao enviar report para o Firestore:', err);
+      return { success: false, message: 'Failed to submit report (network error).' };
+    }
+
+    // Ler versão mais recente do documento para contar votos corretamente
+    const matchSnap = await getDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+    if (!matchSnap.exists()) return { success: false, message: 'Match no longer exists.' };
+    const serverData: any = matchSnap.data();
+    const latestReports = serverData.playerReports || [];
+
+    console.log(`📊 Total de reports (server): ${latestReports.length}`);
+
+    // Recontar resultados com base na fonte de verdade (servidor)
     const resultCounts = new Map<string, { count: number, scoreA: number, scoreB: number, voters: string[] }>();
-    
-    updatedReports.forEach(report => {
+    latestReports.forEach((report: any) => {
       const key = `${report.scoreA}-${report.scoreB}`;
       const existing = resultCounts.get(key);
-      
       if (existing) {
         existing.count++;
         existing.voters.push(report.playerName);
       } else {
-        resultCounts.set(key, {
-          count: 1,
-          scoreA: report.scoreA,
-          scoreB: report.scoreB,
-          voters: [report.playerName]
-        });
+        resultCounts.set(key, { count: 1, scoreA: report.scoreA, scoreB: report.scoreB, voters: [report.playerName] });
       }
     });
-    
-    console.log('📊 Contagem de resultados:');
-    resultCounts.forEach((data, key) => {
-      console.log(`  ${key}: ${data.count} votos (${data.voters.join(', ')})`);
-    });
-    
-    // ⭐ NOVO SISTEMA: Exatamente 3 votos iguais para consenso (funciona com qualquer número de players)
+
+    resultCounts.forEach((data, key) => console.log(`  ${key}: ${data.count} votos (${data.voters.join(', ')})`));
+
+    // Verificar consenso no servidor
     const REQUIRED_VOTES = 3;
-    let consensusResult = null;
-    for (const [key, data] of resultCounts.entries()) {
+    let consensusResult: { scoreA: number, scoreB: number, voters: string[] } | null = null;
+    for (const [_, data] of resultCounts.entries()) {
       if (data.count >= REQUIRED_VOTES) {
-        consensusResult = data;
-        console.log(`✅ CONSENSO ALCANÇADO! Resultado ${key} tem ${data.count} votos (necessário ${REQUIRED_VOTES})`);
+        consensusResult = { scoreA: data.scoreA, scoreB: data.scoreB, voters: data.voters };
         break;
       }
     }
-    
-    // ⭐ Atualizar no Firestore
-    await updateMatch({ 
-      playerReports: updatedReports,
-      // Manter compatibilidade com sistema antigo
-      reportA: matchState.reportA,
-      reportB: matchState.reportB
-    });
-    
-    // ⭐ Se temos consenso, finalizar a match
+
+    // Se já existe consenso no servidor e a match ainda não foi marcada como finalizada, finalizar
     if (consensusResult) {
-      console.log('🎉 Finalizando match com resultado consensual');
-      console.log(`  Score: ${consensusResult.scoreA} - ${consensusResult.scoreB}`);
-      console.log(`  Votantes: ${consensusResult.voters.join(', ')}`);
-      await finalizeMatch({ 
-        scoreA: consensusResult.scoreA, 
-        scoreB: consensusResult.scoreB 
-      });
-      return { success: true, message: "Match finalized! Result verified by 3+ players." };
+      // Evitar duplicar finalização — verificar flag no servidor
+      if (serverData.resultReported) {
+        console.log('⚠️ Consenso detectado mas match já marcada como finalizada no servidor.');
+        return { success: true, message: 'Result verified (already finalized).' };
+      }
+
+      console.log('🎉 Consenso alcançado no servidor — finalizando match agora');
+      await finalizeMatch({ scoreA: consensusResult.scoreA, scoreB: consensusResult.scoreB });
+      return { success: true, message: 'Match finalized! Result verified by 3+ players.' };
     }
-    
-    // ⭐ Caso contrário, aguardar mais reports
-    const needMore = 3 - updatedReports.length;
+
+    const needMore = Math.max(0, REQUIRED_VOTES - latestReports.length);
     console.log(`⏳ Aguardando mais ${needMore} report(s)`);
-    
-    return { 
-      success: true, 
-      message: `Score submitted! Waiting for ${needMore} more player${needMore > 1 ? 's' : ''} to verify...` 
-    };
+    return { success: true, message: `Score submitted! Waiting for ${needMore} more player${needMore > 1 ? 's' : ''} to verify...` };
   };
 
   const sendFriendRequest = async (toId: string) => {
