@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
+import { db } from '../lib/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { MatchPhase } from '../types';
 import Card from './ui/Card';
 import Button from './ui/Button';
@@ -31,6 +33,7 @@ const MatchInterface = () => {
   // Chat State
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [localMatchCode, setLocalMatchCode] = useState('');
 
   useEffect(() => {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,7 +75,14 @@ const MatchInterface = () => {
 
   const minutesPassed = Math.floor(timeLeft / 60000);
   const isTestMatch = matchState.id?.startsWith?.('testmatch_');
-  const canReport = isTestMatch || minutesPassed >= 1; // ⭐ Test matches: permitir report imediato
+  const canReport = isTestMatch || minutesPassed >= 20; // ⭐ Test matches: permitir report imediato; normais só após 20min
+
+  // Sincronizar código da partida local com o estado global
+  useEffect(() => {
+    if (matchState?.matchCode != null) {
+      setLocalMatchCode(matchState.matchCode);
+    }
+  }, [matchState?.matchCode]);
 
   // Determine Result Title & Color
   const teamA = matchState.teamA || [];
@@ -90,6 +100,12 @@ const MatchInterface = () => {
           resultColor = "text-rose-500 drop-shadow-[0_0_35px_rgba(225,29,72,0.4)]";
       }
   }
+
+  // Average rank por equipa
+  const avgPointsA = teamA.length ? teamA.reduce((sum, p) => sum + p.points, 0) / teamA.length : 0;
+  const avgPointsB = teamB.length ? teamB.reduce((sum, p) => sum + p.points, 0) / teamB.length : 0;
+  const avgRankA = getRankInfo(avgPointsA).name;
+  const avgRankB = getRankInfo(avgPointsB).name;
 
   const handleReportSubmit = async () => {
       const sA = parseInt(scoreA);
@@ -430,36 +446,123 @@ const MatchInterface = () => {
                 </div>
             )}
 
-            {/* --- PHASE: LIVE (FIXED LAYOUT WITH SCROLLABLE CONTENT AREAS) --- */}
+            {/* --- PHASE: LIVE (LAYOUT INSPIRADO NA IMAGEM) --- */}
             {matchState.phase === MatchPhase.LIVE && (
-                <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-700 max-w-5xl mx-auto w-full p-2 overflow-hidden">
-                        {/* Map Header Card - FIXED HEIGHT */}
-                        <div className="relative rounded-3xl overflow-hidden border border-white/5 h-auto py-6 md:h-40 flex flex-col md:flex-row items-center justify-between px-8 bg-black shrink-0">
+                <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-700 max-w-6xl mx-auto w-full p-2 overflow-hidden">
+                        {/* Map + Teams + Match Code */}
+                        <div className="relative rounded-3xl overflow-hidden border border-white/5 py-8 px-6 md:px-10 bg-black shrink-0">
                             {matchState.selectedMap && (
                                 <div 
-                                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 pointer-events-none"
+                                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 pointer-events-none"
                                     style={{ backgroundImage: `url(${MAP_IMAGES[matchState.selectedMap]})` }}
                                 ></div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 via-black/40 to-rose-900/80 pointer-events-none"></div>
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/80 to-black pointer-events-none"></div>
 
-                            <div className="relative z-10 text-center w-full md:w-1/3 mb-2 md:mb-0">
-                                <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainA?.username.toUpperCase()}</h2>
-                                <p className="text-emerald-400 text-xs md:text-sm uppercase tracking-widest font-bold shadow-black drop-shadow-md">Attack</p>
-                            </div>
-                            
-                            <div className="relative z-10 text-center w-full md:w-1/3 flex flex-col items-center mb-2 md:mb-0 order-first md:order-none">
-                                <span className="text-xs text-zinc-300 uppercase tracking-widest mb-1 font-semibold shadow-black drop-shadow-md">Map</span>
-                                <span className="text-lg md:text-xl font-display font-bold text-white mb-2 shadow-black drop-shadow-lg">{matchState.selectedMap}</span>
-                                <div className="flex items-center space-x-2 bg-black/60 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
-                                    <Clock className="w-3 h-3 text-zinc-400" />
-                                    <span className="font-mono text-base text-white">{formatTime(timeLeft)}</span>
+                            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+                                {/* Left Team */}
+                                <div className="text-center lg:text-left w-full lg:w-1/3 space-y-1">
+                                    <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400">Time</p>
+                                    <h2 className="text-2xl md:text-3xl font-display font-bold text-white tracking-tight">
+                                        {matchState.captainA?.username || 'Team A'}
+                                    </h2>
+                                    <p className="text-[11px] text-zinc-400 uppercase tracking-[0.25em] mt-2">
+                                        Team Avg: <span className="text-emerald-400 font-semibold">{avgRankA}</span>
+                                    </p>
                                 </div>
-                            </div>
 
-                            <div className="relative z-10 text-center w-full md:w-1/3">
-                                <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-1 shadow-lg">TEAM {matchState.captainB?.username.toUpperCase()}</h2>
-                                <p className="text-rose-400 text-xs md:text-sm uppercase tracking-widest font-bold shadow-black drop-shadow-md">Defense</p>
+                                {/* Center - Map + Match Code */}
+                                <div className="flex flex-col items-center space-y-4 w-full lg:w-1/3">
+                                    <div className="flex flex-col items-center space-y-1">
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] uppercase tracking-[0.25em] text-emerald-300">
+                                            Mapa Escolhido
+                                        </span>
+                                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.7)]">
+                                            {matchState.selectedMap || 'MAP'}
+                                        </h1>
+                                        <p className="text-[11px] text-zinc-400 uppercase tracking-[0.25em] flex items-center gap-2 mt-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span>Time Elapsed: {formatTime(timeLeft)}</span>
+                                        </p>
+                                    </div>
+
+                                    {/* Match Code Card */}
+                                    <div className="w-full max-w-sm mt-4">
+                                        <Card className="bg-black/80 border-white/10">
+                                            <div className="flex flex-col space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
+                                                        Código da Partida
+                                                    </span>
+                                                    {isCaptain && (
+                                                        <span className="text-[10px] text-emerald-400 uppercase tracking-widest">
+                                                            Captain Only
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Edit/Display Code */}
+                                                {isCaptain ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={localMatchCode}
+                                                            onChange={(e) => setLocalMatchCode(e.target.value.toUpperCase())}
+                                                            placeholder="Enter code..."
+                                                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-rose-500 font-mono tracking-[0.25em]"
+                                                        />
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={async () => {
+                                                                const trimmed = localMatchCode.trim();
+                                                                if (!trimmed || !matchState?.id) return;
+                                                                try {
+                                                                  await updateDoc(doc(db, 'active_matches', matchState.id), {
+                                                                    matchCode: trimmed.toUpperCase()
+                                                                  });
+                                                                  setLocalMatchCode(trimmed.toUpperCase());
+                                                                } catch (e) {
+                                                                  console.warn('Failed to save match code', e);
+                                                                }
+                                                            }}
+                                                            className="px-3"
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 font-mono text-sm tracking-[0.25em] text-zinc-300">
+                                                            {matchState.matchCode ? matchState.matchCode : 'Waiting...'}
+                                                        </div>
+                                                        {matchState.matchCode && (
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(matchState.matchCode || '');
+                                                                }}
+                                                            >
+                                                                <span className="text-xs">Copy</span>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    </div>
+                                </div>
+
+                                {/* Right Team */}
+                                <div className="text-center lg:text-right w-full lg:w-1/3 space-y-1">
+                                    <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400">Os Inimigos</p>
+                                    <h2 className="text-2xl md:text-3xl font-display font-bold text-white tracking-tight">
+                                        {matchState.captainB?.username || 'Team B'}
+                                    </h2>
+                                    <p className="text-[11px] text-zinc-400 uppercase tracking-[0.25em] mt-2">
+                                        Team Avg: <span className="text-rose-400 font-semibold">{avgRankB}</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

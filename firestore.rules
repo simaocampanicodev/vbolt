@@ -58,8 +58,6 @@ service cloud.firestore {
     }
 
     // --- ACTIVE MATCHES ---
-    // Participants can update (including phase, resultReported, playerPointsChanges) so that
-    // the Cloud Function applyMatchResults can run and update users' points (incl. test matches).
     match /active_matches/{matchId} {
       allow read: if true;
 
@@ -67,10 +65,25 @@ service cloud.firestore {
         && request.resource.data.players.size() > 0
         && request.resource.data.players.hasAny([request.auth.uid]);
 
+      // Atualizações:
+      // - Admin pode sempre atualizar
+      // - Capitães podem atualizar apenas o campo matchCode (código da partida)
+      // - Outros participantes podem atualizar a match DESDE QUE não toquem em matchCode
       allow update: if request.auth != null && (
-        (resource.data.players is list && resource.data.players.hasAny([request.auth.uid]))
-        || (request.resource.data.players is list && request.resource.data.players.hasAny([request.auth.uid]))
-        || isAdmin()
+        isAdmin()
+        || (
+          // Apenas capitães podem mudar o código da partida
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['matchCode'])
+          && (request.auth.uid == resource.data.captainA || request.auth.uid == resource.data.captainB)
+        )
+        || (
+          // Atualizações normais (sem tocar em matchCode) permitidas a participantes
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['matchCode'])
+          && (
+            (resource.data.players is list && resource.data.players.hasAny([request.auth.uid]))
+            || (request.resource.data.players is list && request.resource.data.players.hasAny([request.auth.uid]))
+          )
+        )
       );
 
       allow delete: if isAdmin();

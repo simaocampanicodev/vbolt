@@ -165,6 +165,8 @@ export interface MatchState {
   remainingPool: User[]; 
   remainingMaps: GameMap[];
   selectedMap: GameMap | null;
+  /** Código da partida (inserido pelos capitães) */
+  matchCode?: string | null;
   startTime: number | null; 
   resultReported: boolean;
   winner: 'A' | 'B' | null;

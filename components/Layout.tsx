@@ -11,11 +11,33 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }) => {
-  const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, hasDashboardAccess, setViewProfileId } = useGame();
+  const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, hasDashboardAccess, setViewProfileId, queue, queueJoinedAt } = useGame();
+  const [queueElapsed, setQueueElapsed] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Calculate pending friend requests
   const friendRequestCount = currentUser.friendRequests ? currentUser.friendRequests.length : 0;
+  const isInQueue = isAuthenticated && queue.some(u => u.id === currentUser.id);
+
+  // Queue time counter
+  React.useEffect(() => {
+    if (!isInQueue || !queueJoinedAt) {
+      setQueueElapsed(0);
+      return;
+    }
+    const update = () => {
+      setQueueElapsed(Date.now() - queueJoinedAt);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [isInQueue, queueJoinedAt]);
+
+  const formatTime = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   const navItems = [
     { id: 'queue', icon: Home, label: 'Hub' },
@@ -195,6 +217,30 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
             {children}
         </div>
       </main>
+
+      {/* Queue Banner - Fixed Bottom */}
+      {isAuthenticated && (
+        <div
+          className={`
+            fixed bottom-4 left-0 right-0 flex justify-center z-40 transition-all duration-300
+            ${isInQueue ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}
+          `}
+        >
+          <div className="max-w-md w-full mx-4 px-5 py-3 rounded-2xl bg-black/90 border border-white/10 shadow-2xl backdrop-blur-md flex items-center justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-zinc-500">Queue</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-medium text-zinc-200">Finding match...</span>
+                <span className="text-[10px] text-zinc-500">{queue.length}/10 players</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="font-mono text-sm text-white">{formatTime(queueElapsed)}</div>
+              <div className="w-6 h-6 border-2 border-zinc-700 border-t-rose-500 rounded-full animate-spin" />
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

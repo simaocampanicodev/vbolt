@@ -38,6 +38,8 @@ interface GameContextType {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   linkRiotAccount: (riotId: string, riotTag: string) => Promise<void>;
   queue: User[];
+  /** Timestamp (ms) de quando o utilizador entrou na queue, ou null se não está na fila */
+  queueJoinedAt: number | null;
   joinQueue: () => Promise<void>;
   leaveQueue: () => Promise<void>;
   testFillQueue: () => void;
@@ -95,6 +97,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<User>(initialUser);
   const [pendingAuthUser, setPendingAuthUser] = useState<FirebaseUser | null>(null);
   const [queue, setQueue] = useState<User[]>([]);
+  const [queueJoinedAt, setQueueJoinedAt] = useState<number | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([]);
@@ -153,9 +156,22 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('🎮 Listener de queue iniciado');
     const unsubscribe = onSnapshot(collection(db, COLLECTIONS.QUEUE), (snapshot) => {
       console.log(`🎮 Queue: ${snapshot.size} documentos`);
-      
-      // ✅ CORRIGIDO: Aguardar usuários serem carregados antes de mapear
-      const queueUserIds = snapshot.docs.map(doc => doc.id);
+      // ✅ Guardar IDs e o joinedAt do utilizador actual (para cronómetro da fila)
+      const queueUserIds: string[] = [];
+      let currentUserJoinedAt: number | null = null;
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        queueUserIds.push(docSnap.id);
+        if (docSnap.id === currentUser.id) {
+          const ts: any = d.joinedAt;
+          if (ts && typeof ts.toMillis === 'function') {
+            currentUserJoinedAt = ts.toMillis();
+          } else {
+            currentUserJoinedAt = Date.now();
+          }
+        }
+      });
+      setQueueJoinedAt(currentUserJoinedAt);
       
       // Se ainda não temos usuários carregados, aguardar
       if (allUsersRef.current.length === 0 && queueUserIds.length > 0) {
@@ -201,7 +217,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     
     return () => unsubscribe();
-  }, []);
+  }, [currentUser.id]);
 
   // 🔥 FALLBACK: Se a match está FINISHED mas playerPointsChanges veio vazio (ex.: outros jogadores), buscar em matches/
   useEffect(() => {
@@ -294,6 +310,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           remainingPool: getUserArray(userMatch.remainingPool),
           remainingMaps: userMatch.remainingMaps || [],
           selectedMap: userMatch.selectedMap || null,
+          matchCode: userMatch.matchCode || null,
           startTime: userMatch.startTime ? (userMatch.startTime as any).toMillis() : null,
           resultReported: userMatch.resultReported || false,
           winner: userMatch.winner || null,
@@ -539,6 +556,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         phase: MatchPhase.READY_CHECK,
         players: players.map(p => p.id),
         playersData: playersData,
+        matchCode: null,
         readyPlayers: botIds,
         readyExpiresAt: Timestamp.fromMillis(Date.now() + 60000),
         chat: [{
@@ -1087,12 +1105,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       joinedAt: serverTimestamp()
     });
     console.log('✅ Na queue!');
+    setQueueJoinedAt(Date.now());
   };
 
   const leaveQueue = async () => {
     console.log('🚪 Saindo da queue...');
     await deleteDoc(doc(db, COLLECTIONS.QUEUE, currentUser.id));
     console.log('✅ Saiu da queue!');
+    setQueueJoinedAt(null);
   };
 
   const testFillQueue = () => {
@@ -1173,6 +1193,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         phase: MatchPhase.LIVE, // ⭐ Direto para LIVE
         players: allPlayers.map(p => p.id),
         playersData: playersData,
+        matchCode: null,
         captainA: teamA[0].id,
         captainB: teamB[0].id,
         teamA: teamA.map(p => p.id),
@@ -1696,7 +1717,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <GameContext.Provider value={{
       isAuthenticated, isAdmin, hasDashboardAccess, completeRegistration, logout, currentUser, pendingAuthUser,
-      updateProfile, linkRiotAccount, queue, joinQueue, leaveQueue, testFillQueue,
+      updateProfile, linkRiotAccount, queue, queueJoinedAt, joinQueue, leaveQueue, testFillQueue,
       createTestMatchDirect, exitMatchToLobby,
       matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage,
       matchHistory, allUsers, reports, submitReport, commendPlayer, resetMatch,
