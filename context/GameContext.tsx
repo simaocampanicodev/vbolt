@@ -107,6 +107,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [tickets, setTickets] = useState<Ticket[]>([]);
   
   const allUsersRef = useRef<User[]>([]);
+  /** Bots added via Fill Queue (not in Firestore USERS); kept so queue/match listeners can resolve them immediately */
+  const botUsersRef = useRef<User[]>([]);
   const currentMatchIdRef = useRef<string | null>(null);
   const matchesBeingCreatedRef = useRef<Set<string>>(new Set()); // ⭐ Rastrear matches em processamento
   const lastAppliedPointsMatchIdRef = useRef<string | null>(null); // ⭐ Evitar aplicar pontos duas vezes à mesma partida
@@ -143,8 +145,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: (d.role as UserRole) || 'user', verified: !!d.verified
         };
       });
-      setAllUsers(users);
-      console.log(`✅ ${users.length} usuários carregados`);
+      // Preserve bots (they exist only in queue/match, not in Firestore USERS) so they don't disappear
+      setAllUsers(prev => [...users, ...(prev || []).filter(u => u.isBot)]);
+      console.log(`✅ ${users.length} usuários (Firestore) + bots preservados`);
     });
     return () => unsubscribe();
   }, []);
@@ -171,23 +174,21 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       setQueueJoinedAt(currentUserJoinedAt);
       
-      // Se ainda não temos usuários carregados, aguardar
-      if (allUsersRef.current.length === 0 && queueUserIds.length > 0) {
+      const resolveUser = (id: string) =>
+        allUsersRef.current.find(u => u.id === id) || botUsersRef.current.find(u => u.id === id) || null;
+
+      // Se ainda não temos usuários carregados (e não são só bots), aguardar
+      if (allUsersRef.current.length === 0 && botUsersRef.current.length === 0 && queueUserIds.length > 0) {
         console.log('⏳ Aguardando usuários serem carregados...');
-        // Tentar novamente em 500ms
         setTimeout(() => {
-          const queueUsers = queueUserIds
-            .map(id => allUsersRef.current.find(u => u.id === id))
-            .filter(Boolean) as User[];
+          const queueUsers = queueUserIds.map(id => resolveUser(id)).filter(Boolean) as User[];
           setQueue(queueUsers);
           console.log(`🎮 Queue (retry): ${queueUsers.length}/10 jogadores`);
         }, 500);
         return;
       }
-      
-      const queueUsers = queueUserIds
-        .map(id => allUsersRef.current.find(u => u.id === id))
-        .filter(Boolean) as User[];
+
+      const queueUsers = queueUserIds.map(id => resolveUser(id)).filter(Boolean) as User[];
       
       console.log(`🎮 Queue: ${queueUsers.length}/10 jogadores`);
       console.log('  Jogadores:', queueUsers.map(u => u.username).join(', '));
@@ -291,10 +292,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log(`  💰 Points Changes: ${playerPointsChanges.length}`);
         currentMatchIdRef.current = userMatch.id;
         const playersData = userMatch.playersData || {};
+        const resolveMatchUser = (id: string) =>
+          allUsersRef.current.find(u => u.id === id) || botUsersRef.current.find(u => u.id === id) || null;
         const players = userMatch.players.map((id: string) =>
-          allUsersRef.current.find(u => u.id === id) || { ...initialUser, id, username: playersData[id]?.username || 'Unknown' }
+          resolveMatchUser(id) || { ...initialUser, id, username: playersData[id]?.username || 'Unknown' }
         );
-        const getUser = (id: string) => allUsersRef.current.find(u => u.id === id) || null;
+        const getUser = (id: string) => resolveMatchUser(id);
         const getUserArray = (ids: string[]) => (ids || []).map(id => getUser(id)).filter(Boolean) as User[];
         setMatchState({
           id: userMatch.id,
@@ -307,6 +310,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           turn: userMatch.turn || 'A',
           remainingPool: getUserArray(userMatch.remainingPool),
           remainingMaps: userMatch.remainingMaps || [],
+          bannedMaps: userMatch.bannedMaps || [],
           selectedMap: userMatch.selectedMap || null,
           matchCode: userMatch.matchCode || null,
           startTime: userMatch.startTime ? (userMatch.startTime as any).toMillis() : null,
@@ -1116,6 +1120,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const testFillQueue = () => {
     const botsNeeded = 10 - queue.length;
+    if (botsNeeded <= 0) return;
     console.log(`🤖 Criando ${botsNeeded} bots...`);
     const newBots = Array.from({ length: botsNeeded }, (_, i) => {
       const bot = generateBot(`test-${Date.now()}-${i}`);
@@ -1123,6 +1128,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       bot.riotTag = 'BOT';
       return bot;
     });
+    botUsersRef.current = [...botUsersRef.current, ...newBots];
     setAllUsers(prev => [...prev, ...newBots]);
     newBots.forEach(bot => {
       setDoc(doc(db, COLLECTIONS.QUEUE, bot.id), {
