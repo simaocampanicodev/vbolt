@@ -79,12 +79,6 @@ export const RankRequirementsModal: React.FC<RankRequirementsModalProps> = ({ is
             );
           })}
         </div>
-
-        <div className="mt-6 pt-4 border-t border-white/10 flex-shrink-0">
-          <p className="text-xs text-zinc-400 text-center">
-            
-          </p>
-        </div>
       </Card>
     </div>
   );
