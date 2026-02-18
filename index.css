@@ -130,6 +130,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   background: rgba(244, 63, 94, 0.65);
 }
 
+/* Rank requirements modal – scrollbar com fundo cinzento escuro */
+.rank-modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #52525b #27272a;
+}
+.rank-modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.rank-modal-scroll::-webkit-scrollbar-track {
+  background: #27272a;
+  border-radius: 4px;
+}
+.rank-modal-scroll::-webkit-scrollbar-thumb {
+  background: #52525b;
+  border-radius: 4px;
+}
+.rank-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}
+
 /* Report modal: dropdown de motivos com fundo cinzento escuro */
 .report-reason-select option {
   background: #27272a;

@@ -51,14 +51,16 @@ const Leaderboard = () => {
       <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
         <div className={`flex p-1 rounded-2xl ${themeMode === 'dark' ? 'bg-white/5' : 'bg-zinc-200'}`}>
             <button 
+                type="button"
                 onClick={() => setSortBy('mmr')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${sortBy === 'mmr' ? 'bg-rose-500 text-white shadow-lg' : 'text-zinc-500'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'mmr' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-600 hover:text-black hover:bg-zinc-300'}`}
             >
                 MMR Ranking
             </button>
             <button 
+                type="button"
                 onClick={() => setSortBy('level')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${sortBy === 'level' ? 'bg-rose-500 text-white shadow-lg' : 'text-zinc-500'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'level' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-600 hover:text-black hover:bg-zinc-300'}`}
             >
                 Level Ranking
             </button>
