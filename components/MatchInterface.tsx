@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
@@ -574,64 +573,61 @@ const MatchInterface = () => {
 
                                     {/* Code Input/Display - lobby code centered, save/copy icons to the right */}
                                     {isCaptain ? (
-                                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 w-full max-w-md mx-auto">
-                                            <div />
+                                        <div className="flex items-center justify-center gap-3 w-full max-w-md mx-auto">
+                                            <button
+                                                type="button"
+                                                aria-label="Save match code"
+                                                title="Save"
+                                                onClick={async () => {
+                                                    const trimmed = localMatchCode.trim().toUpperCase();
+                                                    if (!trimmed || !matchState?.id) return;
+                                                    try {
+                                                        if ((matchState.matchCode || '').trim() !== trimmed) {
+                                                            await updateDoc(doc(db, 'active_matches', matchState.id), { matchCode: trimmed });
+                                                        }
+                                                        setLocalMatchCode(trimmed);
+                                                        showToast('Match code saved', 'success');
+                                                    } catch (e) {
+                                                        console.warn('Failed to save match code', e);
+                                                        showToast('Failed to save match code', 'error');
+                                                    }
+                                                }}
+                                                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 grid place-items-center"
+                                            >
+                                                <Save className="w-4 h-4 text-zinc-200" />
+                                            </button>
                                             <input
                                                 type="text"
                                                 value={localMatchCode}
                                                 onChange={(e) => {
-                                                  const filtered = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-                                                  setLocalMatchCode(filtered);
+                                                    const filtered = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+                                                    setLocalMatchCode(filtered);
                                                 }}
                                                 placeholder="Lobby code"
                                                 className="w-[220px] bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-base text-white outline-none focus:border-emerald-400 font-mono tracking-[0.25em] text-center"
                                             />
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    aria-label="Save match code"
-                                                    title="Save"
-                                                    onClick={async () => {
-                                                        const trimmed = localMatchCode.trim().toUpperCase();
-                                                        if (!trimmed || !matchState?.id) return;
-                                                        try {
-                                                          if ((matchState.matchCode || '').trim() !== trimmed) {
-                                                            await updateDoc(doc(db, 'active_matches', matchState.id), { matchCode: trimmed });
-                                                          }
-                                                          setLocalMatchCode(trimmed);
-                                                          showToast('Match code saved', 'success');
-                                                        } catch (e) {
-                                                          console.warn('Failed to save match code', e);
-                                                          showToast('Failed to save match code', 'error');
-                                                        }
-                                                    }}
-                                                    className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 grid place-items-center"
-                                                >
-                                                    <Save className="w-4 h-4 text-zinc-200" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    aria-label="Copy match code"
-                                                    title="Copy"
-                                                    onClick={async () => {
-                                                        const code = (localMatchCode || matchState.matchCode || '').trim();
-                                                        if (!code) return;
-                                                        try {
-                                                          await navigator.clipboard.writeText(code);
-                                                          showToast('Match code copied to clipboard', 'success');
-                                                        } catch {
-                                                          showToast('Failed to copy match code', 'error');
-                                                        }
-                                                    }}
-                                                    className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 grid place-items-center"
-                                                >
-                                                    <Copy className="w-4 h-4 text-zinc-200" />
-                                                </button>
-                                            </div>
+                                            <button
+                                                type="button"
+                                                aria-label="Copy match code"
+                                                title="Copy"
+                                                onClick={async () => {
+                                                    const code = (localMatchCode || matchState.matchCode || '').trim();
+                                                    if (!code) return;
+                                                    try {
+                                                        await navigator.clipboard.writeText(code);
+                                                        showToast('Match code copied to clipboard', 'success');
+                                                    } catch {
+                                                        showToast('Failed to copy match code', 'error');
+                                                    }
+                                                }}
+                                                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 grid place-items-center"
+                                            >
+                                                <Copy className="w-4 h-4 text-zinc-200" />
+                                            </button>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 w-full max-w-md mx-auto">
-                                            <div />
+                                        <div className="flex items-center justify-center gap-3 w-full max-w-md mx-auto">
+                                            <div className="w-10 h-10" />
                                             <div className="w-[220px] bg-black/40 border border-white/10 rounded-2xl px-4 py-3 font-mono text-base tracking-[0.25em] text-zinc-200 text-center">
                                                 {matchState.matchCode ? matchState.matchCode : 'WAITING...'}
                                             </div>
@@ -643,10 +639,10 @@ const MatchInterface = () => {
                                                 onClick={async () => {
                                                     if (!matchState.matchCode) return;
                                                     try {
-                                                      await navigator.clipboard.writeText(matchState.matchCode);
-                                                      showToast('Match code copied to clipboard', 'success');
+                                                        await navigator.clipboard.writeText(matchState.matchCode);
+                                                        showToast('Match code copied to clipboard', 'success');
                                                     } catch {
-                                                      showToast('Failed to copy match code', 'error');
+                                                        showToast('Failed to copy match code', 'error');
                                                     }
                                                 }}
                                                 className={`w-10 h-10 rounded-xl border grid place-items-center transition-colors justify-self-end ${
