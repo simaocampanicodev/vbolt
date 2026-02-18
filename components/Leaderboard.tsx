@@ -52,14 +52,14 @@ const Leaderboard = () => {
             <button 
                 type="button"
                 onClick={() => setSortBy('mmr')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'mmr' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-600 hover:text-black hover:bg-zinc-300'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'mmr' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}
             >
                 MMR Ranking
             </button>
             <button 
                 type="button"
                 onClick={() => setSortBy('level')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'level' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-600 hover:text-black hover:bg-zinc-300'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${sortBy === 'level' ? 'bg-rose-500 text-white shadow-lg' : themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}
             >
                 Level Ranking
             </button>
