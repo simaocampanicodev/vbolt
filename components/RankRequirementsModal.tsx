@@ -82,7 +82,7 @@ export const RankRequirementsModal: React.FC<RankRequirementsModalProps> = ({ is
 
         <div className="mt-6 pt-4 border-t border-white/10 flex-shrink-0">
           <p className="text-xs text-zinc-400 text-center">
-            Points are gained/lost based on match results. Winstreaks provide bonus points. Top 3 rank is for the top 3 players by MMR only.
+            
           </p>
         </div>
       </Card>
