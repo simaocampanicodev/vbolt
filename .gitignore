@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-*.rules
+firestore.rules
 
 # Editor directories and files
 .vscode/*
