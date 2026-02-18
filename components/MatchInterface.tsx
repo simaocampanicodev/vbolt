@@ -201,14 +201,15 @@ const MatchInterface = () => {
     return () => clearInterval(interval);
   }, [matchState?.phase, matchState?.readyExpiresAt]);
 
-  // Winning map flow: 2s highlight (green border + checkmark), then "Creating match..." overlay
+  // Winning map flow: 2s highlight (green border + checkmark), then "Creating lobby" overlay
   useEffect(() => {
     if (matchState?.phase !== MatchPhase.VETO) {
       setShowWinningMapPhase('none');
       setShowCreatingMatch(false);
       return;
     }
-    const isLastMap = matchState.remainingMaps.length === 1;
+    const maps = matchState.remainingMaps ?? [];
+    const isLastMap = maps.length === 1;
     if (!isLastMap) {
       setShowWinningMapPhase('none');
       setShowCreatingMatch(false);
@@ -464,8 +465,8 @@ const MatchInterface = () => {
 
                 return (
                     <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
-                        {/* "Creating match..." overlay – shown 2s after map highlight */}
-                        {showWinningMapPhase === 'creating' && showCreatingMatch && winningMap && (
+                        {/* "Creating lobby" overlay – shown 2s after map highlight */}
+                        {showWinningMapPhase === 'creating' && winningMap && (
                             <div className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
                                 <div className="text-center space-y-6">
                                     <div className="relative">
@@ -477,7 +478,7 @@ const MatchInterface = () => {
                                         {winningMap}
                                     </h2>
                                     <p className="text-xl text-zinc-400 uppercase tracking-widest animate-pulse">
-                                        Creating match...
+                                        Creating lobby...
                                     </p>
                                 </div>
                             </div>

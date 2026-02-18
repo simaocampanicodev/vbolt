@@ -1676,7 +1676,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (matchState.phase === MatchPhase.DRAFT && matchState.remainingPool.length > 0) {
       console.log(`🤖 Bot drafting...`);
       draftPlayer(matchState.remainingPool[Math.floor(Math.random() * matchState.remainingPool.length)]);
-    } else if (matchState.phase === MatchPhase.VETO && matchState.remainingMaps.length > 0) {
+    } else if (matchState.phase === MatchPhase.VETO && matchState.remainingMaps.length > 1) {
+      // Don't veto when only 1 map left – it's auto-selected; vetoing would clear it
       const mapToVeto = matchState.remainingMaps[Math.floor(Math.random() * matchState.remainingMaps.length)];
       console.log(`🤖 Bot vetoing map: ${mapToVeto}`);
       vetoMap(mapToVeto);
