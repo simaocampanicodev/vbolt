@@ -25,18 +25,22 @@ const Leaderboard = () => {
     });
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Fixed button same height, right side */}
-      <div className="fixed top-24 right-4 z-40">
-        <button
-          onClick={() => setShowRankInfoModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-xl shadow-lg text-sm font-medium transition-colors bg-rose-500/20 border-rose-500/30 text-rose-300 hover:bg-rose-500/30 hover:border-rose-500/50"
-          title="View rank requirements"
-        >
-          <Info className="w-4 h-4" />
-          How points work
-        </button>
+    <>
+      {/* Fixed button aligned with right edge of max-w-4xl container */}
+      <div className="fixed top-24 z-40 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 pointer-events-none">
+        <div className="w-full flex justify-end pointer-events-auto">
+          <button
+            onClick={() => setShowRankInfoModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border backdrop-blur-xl shadow-lg text-sm font-medium transition-colors bg-rose-500/20 border-rose-500/30 text-rose-300 hover:bg-rose-500/30 hover:border-rose-500/50"
+            title="View rank requirements"
+          >
+            <Info className="w-4 h-4" />
+            How points work
+          </button>
+        </div>
       </div>
+
+      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       <RankRequirementsModal isOpen={showRankInfoModal} onClose={() => setShowRankInfoModal(false)} themeMode={themeMode} />
 
@@ -112,6 +116,7 @@ const Leaderboard = () => {
         </table>
       </Card>
     </div>
+    </>
   );
 };
 
