@@ -10,7 +10,12 @@ export const getRankInfo = (points: number) => {
       break;
     }
   }
-  return rank;
+  // Return rank with min/max for display
+  return {
+    ...rank,
+    min: rank.min,
+    max: rank.max || Infinity
+  };
 };
 
 /**
@@ -75,13 +80,15 @@ export const generateBot = (id: string, basePoints: number = 1000): User => {
   };
 };
 
+// Faceit-inspired point calculation (balanced around 20-25 points per match)
 export const calculatePoints = (currentPoints: number, isWin: boolean, streak: number) => {
-  const baseChange = 25;
-  const streakBonus = Math.min(streak * 2, 20); // Cap bonus at +20
+  const baseChange = 20; // Base points (similar to Faceit average)
+  const streakBonus = Math.min(streak * 1.5, 15); // Winstreak bonus (capped at +15)
   
   if (isWin) {
     return currentPoints + baseChange + streakBonus;
   } else {
+    // Loss: lose slightly less than base win to account for winstreak bonus
     return Math.max(0, currentPoints - baseChange);
   }
 };

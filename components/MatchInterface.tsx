@@ -8,8 +8,8 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
 import { getRankInfo } from '../services/gameService';
-import { MAP_IMAGES } from '../constants';
-import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User, Copy, Lock, Crown, Save } from 'lucide-react';
+import { MAP_IMAGES, MAPS } from '../constants';
+import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User, Copy, Lock, Crown, Save, Check } from 'lucide-react';
 
 const MatchInterface = () => {
   const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted, showToast } = useGame();
@@ -34,6 +34,8 @@ const MatchInterface = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [localMatchCode, setLocalMatchCode] = useState('');
   const [matchPanelOpen, setMatchPanelOpen] = useState(false);
+  const [showCreatingMatch, setShowCreatingMatch] = useState(false);
+  const [readyProgress, setReadyProgress] = useState(0);
 
   useEffect(() => {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,13 +179,58 @@ const MatchInterface = () => {
       'Abusive Voice Chat'
   ];
 
+  // Calculate progress bar for ready check (descending from right to left)
+  useEffect(() => {
+    if (matchState?.phase !== MatchPhase.READY_CHECK || !matchState.readyExpiresAt) {
+      setReadyProgress(0);
+      return;
+    }
+    
+    const updateProgress = () => {
+      const now = Date.now();
+      const timeLeft = matchState.readyExpiresAt! - now;
+      const totalTime = 60000; // 60 seconds
+      const elapsed = totalTime - timeLeft;
+      const progressPercent = Math.max(0, Math.min(100, (elapsed / totalTime) * 100));
+      setReadyProgress(progressPercent);
+    };
+
+    updateProgress();
+    const interval = setInterval(updateProgress, 50); // Update every 50ms for smooth animation
+    return () => clearInterval(interval);
+  }, [matchState?.phase, matchState?.readyExpiresAt]);
+
+  // Show "Creating match..." when only one map remains in veto phase
+  useEffect(() => {
+    if (matchState?.phase === MatchPhase.VETO) {
+      const isLastMap = matchState.remainingMaps.length === 1;
+      const winningMap = isLastMap ? matchState.remainingMaps[0] : null;
+      
+      if (isLastMap && winningMap && !showCreatingMatch) {
+        setShowCreatingMatch(true);
+      } else if (!isLastMap) {
+        setShowCreatingMatch(false);
+      }
+    } else {
+      setShowCreatingMatch(false);
+    }
+  }, [matchState?.phase, matchState?.remainingMaps, showCreatingMatch]);
+
   // --- READY CHECK PHASE ---
   if (matchState.phase === MatchPhase.READY_CHECK) {
       const hasAccepted = (matchState.readyPlayers || []).includes(currentUser.id);
       const readyCount = matchState.readyPlayers.length;
 
       const readyOverlay = (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-500">
+          {/* Green progress bar at top - descending from right to left */}
+          <div className="fixed top-0 left-0 right-0 h-1 bg-zinc-800 z-50">
+            <div 
+              className="h-full bg-emerald-500 transition-all duration-50 ease-linear shadow-[0_0_10px_rgba(16,185,129,0.8)]"
+              style={{ width: `${readyProgress}%`, marginLeft: 'auto' }}
+            />
+          </div>
+
           <div className="max-w-md w-full p-8 text-center space-y-8 animate-in zoom-in duration-300 mx-auto">
             <h1 className="text-5xl font-display font-bold text-white tracking-tighter animate-pulse">MATCH FOUND</h1>
 
@@ -394,56 +441,128 @@ const MatchInterface = () => {
             )}
 
             {/* --- PHASE: VETO (LOCKED LAYOUT) --- */}
-            {matchState.phase === MatchPhase.VETO && (
-                <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
-                    <div className="flex-none h-24 flex flex-col justify-center items-center text-center space-y-1 mb-2">
-                        <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Map Veto</h2>
-                        <div className="h-6 flex items-center justify-center w-full">
-                            {isMyTurn ? (
-                                <div className="px-4 py-0.5 bg-red-500 text-white text-[10px] uppercase font-bold rounded-full animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]">
-                                    BAN A MAP
-                                </div>
-                            ) : (
-                                <div className="px-4 py-0.5 bg-zinc-600 text-white text-[10px] uppercase font-bold rounded-full opacity-70">
-                                    OPPONENT BANNING...
-                                </div>
-                            )}
-                        </div>
-                    </div>
+            {matchState.phase === MatchPhase.VETO && (() => {
+                const bannedMaps = matchState.bannedMaps || [];
+                // Get all maps from constants to show complete list
+                const allMaps = MAPS; // Show all maps
+                const isLastMap = matchState.remainingMaps.length === 1;
+                const winningMap = isLastMap ? matchState.remainingMaps[0] : null;
 
-                    {/* Veto Grid: Auto-fit without scroll */}
-                    <div className="flex-1 p-4 flex items-center justify-center overflow-hidden">
-                        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full max-w-5xl">
-                            {matchState.remainingMaps.map(map => (
-                                <button
-                                    key={map}
-                                    disabled={!isMyTurn}
-                                    onClick={() => vetoMap(map)}
-                                    className={`
-                                        relative group overflow-hidden rounded-xl border transition-all duration-300
-                                        aspect-[16/9] flex flex-col items-center justify-center
-                                        ${isMyTurn 
-                                            ? 'border-zinc-500/20 hover:border-red-500 hover:scale-105 cursor-pointer shadow-lg' 
-                                            : `opacity-40 grayscale cursor-not-allowed border-transparent`}
-                                    `}
-                                >   
-                                    <img 
-                                        src={MAP_IMAGES[map]} 
-                                        alt={map}
-                                        className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-                                    />
-                                    <div className="absolute inset-0 bg-black/60 group-hover:bg-red-900/60 transition-colors"></div>
-
-                                    <div className="relative z-10 flex flex-col items-center">
-                                        <Ban className={`w-6 h-6 mb-1 ${isMyTurn ? 'text-zinc-300 group-hover:text-white group-hover:scale-110 transition-transform' : 'text-zinc-500'}`} />
-                                        <span className={`text-xs font-display tracking-widest uppercase font-bold text-white shadow-black drop-shadow-md`}>{map}</span>
+                return (
+                    <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
+                        {/* "Creating match..." overlay when last map is selected */}
+                        {showCreatingMatch && winningMap && (
+                            <div className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+                                <div className="text-center space-y-6">
+                                    <div className="relative">
+                                        <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-4 border-emerald-500 flex items-center justify-center mx-auto animate-pulse">
+                                            <Check className="w-12 h-12 text-emerald-400" />
+                                        </div>
                                     </div>
-                                </button>
-                            ))}
+                                    <h2 className="text-4xl font-display font-bold text-white tracking-tighter">
+                                        {winningMap}
+                                    </h2>
+                                    <p className="text-xl text-zinc-400 uppercase tracking-widest animate-pulse">
+                                        Creating match...
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex-none h-24 flex flex-col justify-center items-center text-center space-y-1 mb-2">
+                            <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Map Veto</h2>
+                            <div className="h-6 flex items-center justify-center w-full">
+                                {isMyTurn && !isLastMap ? (
+                                    <div className="px-4 py-0.5 bg-red-500 text-white text-[10px] uppercase font-bold rounded-full animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                                        BAN A MAP
+                                    </div>
+                                ) : isLastMap ? (
+                                    <div className="px-4 py-0.5 bg-emerald-500 text-white text-[10px] uppercase font-bold rounded-full animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                        MAP SELECTED
+                                    </div>
+                                ) : (
+                                    <div className="px-4 py-0.5 bg-zinc-600 text-white text-[10px] uppercase font-bold rounded-full opacity-70">
+                                        OPPONENT BANNING...
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Veto Grid: Show all maps (remaining + banned) */}
+                        <div className="flex-1 p-4 flex items-center justify-center overflow-hidden">
+                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full max-w-5xl">
+                                {allMaps.map(map => {
+                                    const bannedInfo = bannedMaps.find(b => b.map === map);
+                                    const isBanned = !!bannedInfo;
+                                    const isRemaining = matchState.remainingMaps.includes(map);
+                                    const isWinning = map === winningMap;
+
+                                    return (
+                                        <div
+                                            key={map}
+                                            className={`
+                                                relative group overflow-hidden rounded-xl border transition-all duration-300
+                                                aspect-[16/9] flex flex-col items-center justify-center
+                                                ${isBanned 
+                                                    ? 'border-red-500/50 opacity-60 cursor-not-allowed grayscale' 
+                                                    : isWinning
+                                                    ? 'border-emerald-500 ring-4 ring-emerald-500/50 cursor-default'
+                                                    : isMyTurn && isRemaining
+                                                    ? 'border-zinc-500/20 hover:border-red-500 hover:scale-105 cursor-pointer shadow-lg'
+                                                    : 'opacity-40 grayscale cursor-not-allowed border-transparent'}
+                                            `}
+                                        >
+                                            {!isBanned && isRemaining && (
+                                                <button
+                                                    disabled={!isMyTurn}
+                                                    onClick={() => vetoMap(map)}
+                                                    className="absolute inset-0 w-full h-full"
+                                                />
+                                            )}
+                                            
+                                            <img 
+                                                src={MAP_IMAGES[map]} 
+                                                alt={map}
+                                                className={`absolute inset-0 w-full h-full object-cover transition-opacity ${
+                                                    isBanned ? 'opacity-30' : isWinning ? 'opacity-80' : 'opacity-60 group-hover:opacity-40'
+                                                }`}
+                                            />
+                                            <div className={`absolute inset-0 transition-colors ${
+                                                isBanned 
+                                                    ? 'bg-red-900/80' 
+                                                    : isWinning
+                                                    ? 'bg-emerald-900/40'
+                                                    : 'bg-black/60 group-hover:bg-red-900/60'
+                                            }`}></div>
+
+                                            <div className="relative z-10 flex flex-col items-center px-2">
+                                                {isWinning ? (
+                                                    <>
+                                                        <Check className="w-8 h-8 mb-1 text-emerald-400 animate-pulse" />
+                                                        <span className="text-xs font-display tracking-widest uppercase font-bold text-white shadow-black drop-shadow-md text-center">{map}</span>
+                                                    </>
+                                                ) : isBanned ? (
+                                                    <>
+                                                        <Ban className="w-6 h-6 mb-1 text-red-400" />
+                                                        <span className="text-xs font-display tracking-widest uppercase font-bold text-white shadow-black drop-shadow-md text-center">{map}</span>
+                                                        <span className="text-[10px] text-red-300 mt-1 text-center">BANNED</span>
+                                                        <span className="text-[9px] text-zinc-400 mt-0.5 text-center">by {bannedInfo.bannedByName}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Ban className={`w-6 h-6 mb-1 ${isMyTurn && isRemaining ? 'text-zinc-300 group-hover:text-white group-hover:scale-110 transition-transform' : 'text-zinc-500'}`} />
+                                                        <span className={`text-xs font-display tracking-widest uppercase font-bold text-white shadow-black drop-shadow-md`}>{map}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* --- PHASE: LIVE (LAYOUT INSPIRADO NA IMAGEM) --- */}
             {matchState.phase === MatchPhase.LIVE && (

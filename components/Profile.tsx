@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
-import { AGENTS, ROLES, AGENT_IMAGES, AGENT_BANNERS, MAP_IMAGES, MAPS } from '../constants';
+import { AGENTS, ROLES, AGENT_IMAGES, AGENT_BANNERS, MAP_IMAGES, MAPS, RANK_THRESHOLDS } from '../constants';
 import { getRankInfo, getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle, UserPlus, ImagePlus, Code, HelpCircle, BadgeCheck } from 'lucide-react';
+import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, Crown, ThumbsUp, TrendingUp, Map as MapIcon, Activity, Users, Link as LinkIcon, Loader2, CheckCircle, AlertTriangle, UserPlus, ImagePlus, Code, HelpCircle, BadgeCheck, Info } from 'lucide-react';
 import Modal from './ui/Modal';
 import { GameRole, UserRole } from '../types';
 import { uploadToCloudinary, uploadBannerToCloudinary } from '../services/cloudinary';
@@ -56,6 +56,7 @@ const Profile = () => {
   const [showResetSeasonModal, setShowResetSeasonModal] = useState(false);
   const [showAcceptRequestModal, setShowAcceptRequestModal] = useState(false);
   const [showRejectRequestModal, setShowRejectRequestModal] = useState(false);
+  const [showRankInfoModal, setShowRankInfoModal] = useState(false);
 
   // Sync local state when profileUser changes (e.g. navigation or external updates)
   useEffect(() => {
@@ -447,6 +448,79 @@ const Profile = () => {
         variant="warning"
       />
 
+      {/* Rank Requirements Modal */}
+      {showRankInfoModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-display font-bold text-white">Rank Requirements</h3>
+              <button onClick={() => setShowRankInfoModal(false)} className="text-zinc-500 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Challenger Top 1,000 */}
+              <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/50">
+                    <Crown className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-lg">Challenger Top 1,000</h4>
+                    <p className="text-xs text-zinc-400">Top 1,000 players globally</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Regular Ranks */}
+              {RANK_THRESHOLDS.map((rankThreshold, index) => {
+                const level = rankThreshold.level || (index + 1);
+                const isLast = index === RANK_THRESHOLDS.length - 1;
+                const maxDisplay = isLast ? '2000+' : (rankThreshold.max === Infinity ? '∞' : rankThreshold.max);
+                const minDisplay = rankThreshold.min === 0 ? '0' : rankThreshold.min;
+                
+                return (
+                  <div 
+                    key={index}
+                    className={`p-4 rounded-xl border flex items-center justify-between transition-colors ${
+                      themeMode === 'dark' 
+                        ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                        : 'bg-black/5 border-black/10 hover:bg-black/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center border-2 font-bold text-white text-sm"
+                        style={{ 
+                          backgroundColor: `${rankThreshold.color}20`,
+                          borderColor: rankThreshold.color,
+                          color: rankThreshold.color
+                        }}
+                      >
+                        {level}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white">{rankThreshold.name} {level === 10 ? '(Level 10)' : ''}</h4>
+                        <p className="text-xs text-zinc-400">
+                          {minDisplay} - {maxDisplay} points
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <p className="text-xs text-zinc-400 text-center">
+                Points are gained/lost based on match results. Winstreaks provide bonus points.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Hero Banner */}
       <div className={`relative rounded-3xl overflow-hidden min-h-[300px] md:min-h-[250px] shadow-2xl ${themeMode === 'dark' ? 'border border-white/5' : 'border border-zinc-200'}`}>
@@ -541,12 +615,21 @@ const Profile = () => {
 
                 {/* Rank + Riot ID (separate row, no level here) */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span 
-                        className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase border border-white/20 shadow-lg flex-shrink-0"
-                        style={{ backgroundColor: rank.color, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}
-                    >
-                        {rank.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <span 
+                            className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase border border-white/20 shadow-lg flex-shrink-0"
+                            style={{ backgroundColor: rank.color, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}
+                        >
+                            {rank.name}
+                        </span>
+                        <button
+                            onClick={() => setShowRankInfoModal(true)}
+                            className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                            title="View rank requirements"
+                        >
+                            <Info className="w-3.5 h-3.5 text-zinc-400 hover:text-white" />
+                        </button>
+                    </div>
                     {profileUser.riotId && (
                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-600/20 border border-rose-500/30 text-rose-300 flex-shrink-0 flex items-center gap-1">
                             {profileUser.riotId}#{profileUser.riotTag}

@@ -153,6 +153,13 @@ export interface ChatMessage {
   isSystem?: boolean;
 }
 
+export interface BannedMap {
+  map: GameMap;
+  bannedBy: string; // User ID
+  bannedByName: string; // Username
+  team: 'A' | 'B';
+}
+
 export interface MatchState {
   id: string;
   phase: MatchPhase;
@@ -164,6 +171,7 @@ export interface MatchState {
   turn: 'A' | 'B'; 
   remainingPool: User[]; 
   remainingMaps: GameMap[];
+  bannedMaps?: BannedMap[]; // ⭐ NOVO: Mapas banidos com informação de quem baniu
   selectedMap: GameMap | null;
   /** Código da partida (inserido pelos capitães) */
   matchCode?: string | null;

@@ -116,16 +116,18 @@ export const INITIAL_POINTS = 1000;
 
 export const MATCH_FOUND_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"; 
 
+// Faceit-inspired ranking system with Valorant rank names
 export const RANK_THRESHOLDS = [
-  { name: 'Iron', min: 0, color: '#9ca3af' }, 
-  { name: 'Bronze', min: 900, color: '#d97706' }, 
-  { name: 'Silver', min: 1000, color: '#e5e7eb' }, 
-  { name: 'Gold', min: 1050, color: '#facc15' },
-  { name: 'Platinum', min: 1100, color: '#60a5fa' }, 
-  { name: 'Diamond', min: 1150, color: '#c084fc' }, 
-  { name: 'Ascendant', min: 1200, color: '#34d399' }, 
-  { name: 'Immortal', min: 1250, color: '#f87171' }, 
-  { name: 'Radiant', min: 1300, color: '#fef08a' }, 
+  { name: 'Iron', min: 100, max: 500, color: '#9ca3af', level: 1 }, // Level 1
+  { name: 'Bronze', min: 501, max: 750, color: '#d97706', level: 2 }, // Level 2
+  { name: 'Silver', min: 751, max: 900, color: '#e5e7eb', level: 3 }, // Level 3
+  { name: 'Gold', min: 901, max: 1050, color: '#facc15', level: 4 }, // Level 4
+  { name: 'Platinum', min: 1051, max: 1200, color: '#60a5fa', level: 5 }, // Level 5
+  { name: 'Diamond', min: 1201, max: 1350, color: '#c084fc', level: 6 }, // Level 6
+  { name: 'Ascendant', min: 1351, max: 1530, color: '#34d399', level: 7 }, // Level 7
+  { name: 'Immortal', min: 1531, max: 1750, color: '#f87171', level: 8 }, // Level 8
+  { name: 'Radiant', min: 1751, max: 2000, color: '#fef08a', level: 9 }, // Level 9
+  { name: 'Radiant', min: 2001, max: Infinity, color: '#fef08a', level: 10 }, // Level 10 (same name as Level 9)
 ];
 
 export const QUEST_POOL: Quest[] = [

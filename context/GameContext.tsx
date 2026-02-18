@@ -557,6 +557,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         matchCode: null,
         readyPlayers: botIds,
         readyExpiresAt: Timestamp.fromMillis(Date.now() + 60000),
+        bannedMaps: [], // ⭐ Initialize banned maps array
         chat: [{
           id: 'sys-start',
           senderId: 'system',
@@ -1312,35 +1313,54 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const vetoMap = async (map: GameMap) => {
     if (!matchState || matchState.phase !== MatchPhase.VETO) return;
     const newMaps = matchState.remainingMaps.filter(m => m !== map);
-    console.log(`🗺️ Mapa ${map} banido`);
+    const currentTeam = matchState.turn === 'A' ? matchState.captainA : matchState.captainB;
+    const bannedMaps = matchState.bannedMaps || [];
+    
+    console.log(`🗺️ Mapa ${map} banido por ${currentUser.username}`);
+    
+    const newBannedMap = {
+      map,
+      bannedBy: currentUser.id,
+      bannedByName: currentUser.username,
+      team: matchState.turn
+    };
+    
     const updates: any = {
       remainingMaps: newMaps,
+      bannedMaps: [...bannedMaps, newBannedMap],
       chat: [...matchState.chat, {
         id: `sys-veto-${Date.now()}`,
         senderId: 'system',
         senderName: 'System',
-        text: `Map ${map} banned`,
+        text: `Map ${map} banned by ${currentUser.username}`,
         timestamp: Date.now(),
         isSystem: true
       }]
     };
+    
     if (newMaps.length === 1) {
       console.log(`🗺️ Mapa final: ${newMaps[0]}`);
       updates.selectedMap = newMaps[0];
-      updates.phase = MatchPhase.LIVE;
-      updates.startTime = Timestamp.now();
-      updates.chat.push({
-        id: `sys-live-${Date.now()}`,
-        senderId: 'system',
-        senderName: 'System',
-        text: `Match LIVE on ${newMaps[0]}!`,
-        timestamp: Date.now(),
-        isSystem: true
-      });
+      // Wait 3 seconds before going to LIVE phase
+      await updateMatch(updates);
+      setTimeout(async () => {
+        await updateMatch({
+          phase: MatchPhase.LIVE,
+          startTime: Timestamp.now(),
+          chat: [...(updates.chat || matchState.chat), {
+            id: `sys-live-${Date.now()}`,
+            senderId: 'system',
+            senderName: 'System',
+            text: `Match LIVE on ${newMaps[0]}!`,
+            timestamp: Date.now(),
+            isSystem: true
+          }]
+        });
+      }, 3000);
     } else {
       updates.turn = matchState.turn === 'A' ? 'B' : 'A';
+      await updateMatch(updates);
     }
-    await updateMatch(updates);
   };
 
   const sendChatMessage = async (text: string) => {
