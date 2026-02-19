@@ -12,21 +12,12 @@ import { GameRole, UserRole } from '../types';
 import { uploadToCloudinary, uploadBannerToCloudinary } from '../services/cloudinary';
 import { BannerCropModal } from './BannerCropModal';
 
-// Tracker Network oficial logo
-// 🔍 Para encontrar este componente: Ctrl+F → "TrackerNetworkIcon"
-// 👉 Substitua a URL abaixo pelo link direto do PNG oficial do Tracker Network
-//    Ex: https://trackernetwork.com/favicon.png  ou o link do logo oficial deles
-const TRACKER_ICON_URL = "https://PLACEHOLDER_TRACKER_ICON_URL.png"; // ← SUBSTITUIR AQUI
-
+const TRACKER_ICON_URL = "https://trackercdn.com/cdn/tracker.gg/tile-384.png";
 const TrackerNetworkIcon = ({ className = "w-6 h-6" }) => (
   <img src={TRACKER_ICON_URL} alt="Tracker Network" className={className} style={{ objectFit: 'contain' }} />
 );
 
-// Twitch oficial logo (roxo)
-// 🔍 Para encontrar este componente: Ctrl+F → "TwitchOfficialIcon"
-// 👉 Substitua a URL abaixo pelo link direto do PNG oficial da Twitch
-//    Ex: https://brand.twitch.tv/assets/logos/svg/glitch/...  ou o favicon oficial
-const TWITCH_ICON_URL = "https://PLACEHOLDER_TWITCH_ICON_URL.png"; // ← SUBSTITUIR AQUI
+const TWITCH_ICON_URL = "https://cdn-icons-png.flaticon.com/512/5968/5968819.png";
 
 const TwitchOfficialIcon = ({ className = "w-6 h-6" }) => (
   <img src={TWITCH_ICON_URL} alt="Twitch" className={className} style={{ objectFit: 'contain' }} />
