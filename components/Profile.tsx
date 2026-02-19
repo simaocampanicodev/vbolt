@@ -12,6 +12,20 @@ import { GameRole, UserRole } from '../types';
 import { uploadToCloudinary, uploadBannerToCloudinary } from '../services/cloudinary';
 import { BannerCropModal } from './BannerCropModal';
 
+// Tracker Network oficial logo
+const TrackerNetworkIcon = ({ className = "w-6 h-6" }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+  </svg>
+);
+
+// Twitch oficial logo (roxo)
+const TwitchOfficialIcon = ({ className = "w-6 h-6" }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M11 2H2v17h6v4l4-4h5l7-7V2h-6v7h-2V2zm8 10l-3 3h-4l-3 3v-3H7V4h12v8z"/>
+  </svg>
+);
+
 interface BadgeType {
   id: string;
   name: string;
@@ -58,8 +72,8 @@ const Profile = () => {
   const [isLinkingRiot, setIsLinkingRiot] = useState(false);
   const [riotError, setRiotError] = useState<string | null>(null);
     // Tracker / Twitch state
-    const [showTrackerInput, setShowTrackerInput] = useState(false);
-    const [showTwitchInput, setShowTwitchInput] = useState(false);
+    const [socialModalOpen, setSocialModalOpen] = useState(false);
+    const [socialModalEditingType, setSocialModalEditingType] = useState<'tracker' | 'twitch' | null>(null);
     const [trackerInput, setTrackerInput] = useState(profileUser.trackerUrl || '');
     const [twitchInput, setTwitchInput] = useState(profileUser.twitchUrl || '');
     const [socialError, setSocialError] = useState<string | null>(null);
@@ -76,9 +90,9 @@ const Profile = () => {
     setIdentityError(null);
     setRiotError(null);
     setAgentError(null);
-    setTrackerInput(profileUser.trackerUrl || ''); // Carregar o trackerUrl salvo
-    setTwitchInput(profileUser.twitchUrl || '');  // Carregar o twitchUrl salvo
-  }, [profileUser.id, profileUser.username, profileUser.primaryRole, profileUser.trackerUrl, profileUser.twitchUrl]);
+        setTrackerInput(profileUser.trackerUrl || '');
+        setTwitchInput(profileUser.twitchUrl || '');
+  }, [profileUser.id, profileUser.username, profileUser.primaryRole]);
 
   // Check for changes
   useEffect(() => {
@@ -399,38 +413,57 @@ const Profile = () => {
       setShowResetSeasonModal(true);
   };
 
-    const saveTracker = async () => {
+    const saveSocialLink = async () => {
         setSocialError(null);
-        const v = trackerInput.trim();
-        if (!v) return setShowTrackerInput(false);
-        if (!v.toLowerCase().includes('tracker')) {
-            setSocialError('Tracker link must contain the word "tracker"');
-            return;
-        }
-        try {
-            await updateProfile({ trackerUrl: v, trackerAddedAt: Date.now() });
-            setShowTrackerInput(false);
-            showToast('Tracker link saved', 'success');
-        } catch (e: any) {
-            setSocialError(e?.message || 'Failed to save');
+        if (socialModalEditingType === 'tracker') {
+            const v = trackerInput.trim();
+            if (!v) {
+                setSocialError('Link cannot be empty');
+                return;
+            }
+            if (!v.toLowerCase().includes('tracker')) {
+                setSocialError('Link must contain the word "tracker"');
+                return;
+            }
+            try {
+                await updateProfile({ trackerUrl: v, trackerAddedAt: Date.now() });
+                setSocialModalOpen(false);
+                setSocialModalEditingType(null);
+                showToast('Tracker link saved successfully!', 'success');
+            } catch (e: any) {
+                setSocialError(e?.message || 'Failed to save');
+            }
+        } else if (socialModalEditingType === 'twitch') {
+            const v = twitchInput.trim();
+            if (!v) {
+                setSocialError('Link cannot be empty');
+                return;
+            }
+            if (!v.toLowerCase().includes('twitch')) {
+                setSocialError('Link must contain the word "twitch"');
+                return;
+            }
+            try {
+                await updateProfile({ twitchUrl: v, twitchAddedAt: Date.now() });
+                setSocialModalOpen(false);
+                setSocialModalEditingType(null);
+                showToast('Twitch link saved successfully!', 'success');
+            } catch (e: any) {
+                setSocialError(e?.message || 'Failed to save');
+            }
         }
     };
 
-    const saveTwitch = async () => {
+    const openSocialModal = (type: 'tracker' | 'twitch') => {
+        setSocialModalEditingType(type);
         setSocialError(null);
-        const v = twitchInput.trim();
-        if (!v) return setShowTwitchInput(false);
-        if (!v.toLowerCase().includes('twitch')) {
-            setSocialError('Twitch link must contain the word "twitch"');
-            return;
-        }
-        try {
-            await updateProfile({ twitchUrl: v, twitchAddedAt: Date.now() });
-            setShowTwitchInput(false);
-            showToast('Twitch link saved', 'success');
-        } catch (e: any) {
-            setSocialError(e?.message || 'Failed to save');
-        }
+        setSocialModalOpen(true);
+    };
+
+    const closeSocialModal = () => {
+        setSocialModalOpen(false);
+        setSocialModalEditingType(null);
+        setSocialError(null);
     };
 
   const confirmResetSeason = () => {
@@ -612,6 +645,94 @@ const Profile = () => {
         themeMode={themeMode}
       />
 
+      {/* Social Links Modal */}
+      {createPortal(
+        <div className={`${socialModalOpen ? 'fixed' : 'hidden'} inset-0 z-[9999] flex items-center justify-center min-h-screen min-w-full bg-black/80 backdrop-blur-sm p-4`} onClick={closeSocialModal}>
+          <div className="max-w-md w-full animate-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className={`relative rounded-3xl overflow-hidden shadow-2xl border ${themeMode === 'dark' ? 'bg-zinc-900 border-white/10' : 'bg-white border-zinc-200'}`}>
+              <div className={`p-6 space-y-6`}>
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    {socialModalEditingType === 'tracker' ? (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/50">
+                          <TrackerNetworkIcon className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <h2 className={`text-2xl font-display font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>Tracker Network</h2>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-purple-600/20 flex items-center justify-center border border-purple-500/50">
+                          <TwitchOfficialIcon className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <h2 className={`text-2xl font-display font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>Twitch</h2>
+                      </>
+                    )}
+                  </div>
+                  <button 
+                    onClick={closeSocialModal}
+                    className="text-zinc-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Description */}
+                <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                  {socialModalEditingType === 'tracker' ? (
+                    <p>Enter your Tracker Network profile link. It must contain the word "tracker".</p>
+                  ) : (
+                    <p>Enter your Twitch channel link or profile. It must contain the word "twitch".</p>
+                  )}
+                </div>
+
+                {/* Input */}
+                <input
+                  type="text"
+                  placeholder={socialModalEditingType === 'tracker' ? 'https://tracker.gg/valorant/profile/...' : 'https://twitch.tv/yourname'}
+                  value={socialModalEditingType === 'tracker' ? trackerInput : twitchInput}
+                  onChange={(e) => socialModalEditingType === 'tracker' ? setTrackerInput(e.target.value) : setTwitchInput(e.target.value)}
+                  className={`w-full rounded-xl p-3 border outline-none focus:ring-2 ${themeMode === 'dark' ? 'bg-black/40 border-white/10 text-white focus:ring-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:ring-blue-400'}`}
+                />
+
+                {/* Error Message */}
+                {socialError && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                    <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                    <p className="text-sm text-rose-400">{socialError}</p>
+                  </div>
+                )}
+
+                {/* Helper Text */}
+                <div className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-500'} bg-white/5 rounded-lg p-3 border border-white/10`}>
+                  <p className="font-semibold mb-1">Make sure your link contains:</p>
+                  <p>✓ {socialModalEditingType === 'tracker' ? '"tracker"' : '"twitch"'}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1"
+                    onClick={closeSocialModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    onClick={saveSocialLink}
+                  >
+                    Save Link
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Hero Banner */}
       <div className={`relative rounded-3xl overflow-hidden min-h-[300px] md:min-h-[250px] shadow-2xl ${themeMode === 'dark' ? 'border border-white/5' : 'border border-zinc-200'}`}>
@@ -639,59 +760,72 @@ const Profile = () => {
         )}
 
                 {/* Social icons: tracker / twitch - appear bottom-right */}
-                <div className="absolute bottom-6 right-6 z-20 flex items-center space-x-3">
-                    {/* Build array ordered by addedAt descending (newer -> left) so first inserted ends up at right */}
-                    {(() => {
-                        const list: { key: string; url: string; addedAt?: number }[] = [];
-                        if (profileUser.trackerUrl) list.push({ key: 'tracker', url: profileUser.trackerUrl, addedAt: profileUser.trackerAddedAt });
-                        if (profileUser.twitchUrl) list.push({ key: 'twitch', url: profileUser.twitchUrl, addedAt: profileUser.twitchAddedAt });
-                        list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-                        return (
-                            <div className="flex items-center">
-                                {list.map(item => (
-                                    <div key={item.key} className="ml-2">
-                                        {isOwnProfile && (item.key === 'tracker' ? showTrackerInput : showTwitchInput) ? (
-                                            <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/5">
-                                                <input
-                                                    value={item.key === 'tracker' ? trackerInput : twitchInput}
-                                                    onChange={(e) => item.key === 'tracker' ? setTrackerInput(e.target.value) : setTwitchInput(e.target.value)}
-                                                    placeholder={item.key === 'tracker' ? 'Enter tracker link (must contain tracker)' : 'Enter twitch link (must contain twitch)'}
-                                                    className="w-52 rounded-lg p-2 text-sm bg-transparent border border-white/10 outline-none"
-                                                />
-                                                <button onClick={() => item.key === 'tracker' ? saveTracker() : saveTwitch()} className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-sm">Save</button>
-                                                <button onClick={() => { if (item.key === 'tracker') setShowTrackerInput(false); else setShowTwitchInput(false); }} className="px-2 py-1 rounded-lg bg-white/5 text-sm">Cancel</button>
-                                            </div>
-                                        ) : (
-                                            <div className="relative">
-                                                <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center border border-white/10 hover:scale-105 transition-transform">
-                                                    <a href={item.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="w-full h-full flex items-center justify-center text-white">
-                                                        <LinkIcon className="w-5 h-5" />
-                                                    </a>
-                                                </div>
-                                                {isOwnProfile && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); if (item.key === 'tracker') setShowTrackerInput(true); else setShowTwitchInput(true); }}
-                                                        title="Edit link"
-                                                        className="absolute -top-2 -right-2 bg-white/10 rounded-full p-1 border border-white/10 hover:bg-white/20"
-                                                    >
-                                                        <Edit2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                <div className="absolute bottom-6 right-6 z-20 flex items-center gap-2">
+                    {/* Tracker Link */}
+                    {profileUser.trackerUrl ? (
+                        <div className="relative group">
+                            <a 
+                                href={profileUser.trackerUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/30 to-cyan-500/30 border border-blue-400/50 hover:from-blue-500/50 hover:to-cyan-500/50 hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-blue-500/40"
+                                title="Tracker Network"
+                            >
+                                <TrackerNetworkIcon className="w-6 h-6 text-blue-300" />
+                            </a>
+                            {isOwnProfile && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); openSocialModal('tracker'); }}
+                                    className="absolute -top-2 -right-2 bg-white/20 rounded-full p-1.5 border border-white/30 hover:bg-white/40 transition-all shadow-lg"
+                                    title="Edit Tracker link"
+                                >
+                                    <Edit2 className="w-4 h-4 text-white" />
+                                </button>
+                            )}
+                        </div>
+                    ) : isOwnProfile ? (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); openSocialModal('tracker'); }}
+                            className="flex items-center justify-center w-12 h-12 rounded-full bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
+                            title="Add Tracker link"
+                        >
+                            <span className="text-white font-bold text-xl">+</span>
+                        </button>
+                    ) : null}
 
-                                {/* Add buttons for missing links */}
-                                {isOwnProfile && !profileUser.trackerUrl && !showTrackerInput && (
-                                    <button onClick={() => setShowTrackerInput(true)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">+</button>
-                                )}
-                                {isOwnProfile && !profileUser.twitchUrl && !showTwitchInput && (
-                                    <button onClick={() => setShowTwitchInput(true)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">+</button>
-                                )}
-                            </div>
-                        );
-                    })()}
+                    {/* Twitch Link */}
+                    {profileUser.twitchUrl ? (
+                        <div className="relative group">
+                            <a 
+                                href={profileUser.twitchUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-600/30 to-pink-600/30 border border-purple-500/50 hover:from-purple-600/50 hover:to-pink-600/50 hover:scale-110 transition-all duration-300 shadow-lg hover:shadow-purple-500/40"
+                                title="Twitch"
+                            >
+                                <TwitchOfficialIcon className="w-6 h-6 text-purple-300" />
+                            </a>
+                            {isOwnProfile && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); openSocialModal('twitch'); }}
+                                    className="absolute -top-2 -right-2 bg-white/20 rounded-full p-1.5 border border-white/30 hover:bg-white/40 transition-all shadow-lg"
+                                    title="Edit Twitch link"
+                                >
+                                    <Edit2 className="w-4 h-4 text-white" />
+                                </button>
+                            )}
+                        </div>
+                    ) : isOwnProfile ? (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); openSocialModal('twitch'); }}
+                            className="flex items-center justify-center w-12 h-12 rounded-full bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-110"
+                            title="Add Twitch link"
+                        >
+                            <span className="text-white font-bold text-xl">+</span>
+                        </button>
+                    ) : null}
                 </div>
 
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-start md:items-end space-y-4 md:space-y-0 md:space-x-6 z-10">
