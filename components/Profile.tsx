@@ -10,6 +10,7 @@ import { Camera, Edit2, Save, X, User as UserIcon, Award, Flame, Star, Shield, C
 import Modal from './ui/Modal';
 import { GameRole, UserRole } from '../types';
 import { uploadToCloudinary, uploadBannerToCloudinary } from '../services/cloudinary';
+import { BannerCropModal } from './BannerCropModal';
 
 interface BadgeType {
   id: string;
@@ -48,6 +49,8 @@ const Profile = () => {
   // ⭐ NOVO: Estado para loading do upload de avatar e banner
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [bannerCropFile, setBannerCropFile] = useState<File | null>(null);
+  const [bannerCropObjectUrl, setBannerCropObjectUrl] = useState<string | null>(null);
 
   // Riot ID Linking State
   const [riotIdInput, setRiotIdInput] = useState(profileUser.riotId || '');
@@ -240,7 +243,7 @@ const Profile = () => {
     }
   };
 
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !isOwnProfile) return;
     const file = e.target.files[0];
     if (!file.type.startsWith('image/')) {
@@ -251,16 +254,30 @@ const Profile = () => {
       showToast('Banner too large! Maximum 8MB.', 'error');
       return;
     }
+    const objectUrl = URL.createObjectURL(file);
+    setBannerCropFile(file);
+    setBannerCropObjectUrl(objectUrl);
+    bannerInputRef.current && (bannerInputRef.current.value = '');
+  };
+
+  const closeBannerCropModal = () => {
+    if (bannerCropObjectUrl) URL.revokeObjectURL(bannerCropObjectUrl);
+    setBannerCropFile(null);
+    setBannerCropObjectUrl(null);
+  };
+
+  const handleBannerCropConfirm = async (position: string) => {
+    if (!bannerCropFile) return;
     try {
       setIsUploadingBanner(true);
-      const url = await uploadBannerToCloudinary(file);
-      await updateProfile({ bannerUrl: url });
+      const url = await uploadBannerToCloudinary(bannerCropFile);
+      await updateProfile({ bannerUrl: url, bannerPosition: position });
       showToast('Banner updated!', 'success');
     } catch (err: any) {
       showToast(err?.message || 'Error updating banner.', 'error');
     } finally {
       setIsUploadingBanner(false);
-      bannerInputRef.current && (bannerInputRef.current.value = '');
+      closeBannerCropModal();
     }
   };
 
@@ -456,12 +473,23 @@ const Profile = () => {
 
       <RankRequirementsModal isOpen={showRankInfoModal} onClose={() => setShowRankInfoModal(false)} themeMode={themeMode} />
 
+      <BannerCropModal
+        isOpen={!!bannerCropObjectUrl}
+        onClose={closeBannerCropModal}
+        imageUrl={bannerCropObjectUrl || ''}
+        onConfirm={handleBannerCropConfirm}
+        themeMode={themeMode}
+      />
+
       <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Hero Banner */}
       <div className={`relative rounded-3xl overflow-hidden min-h-[300px] md:min-h-[250px] shadow-2xl ${themeMode === 'dark' ? 'border border-white/5' : 'border border-zinc-200'}`}>
         <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 transform scale-105 transition-transform duration-1000"
-            style={{ backgroundImage: `url(${bannerUrl})` }}
+            className="absolute inset-0 bg-cover bg-no-repeat opacity-40 transform scale-105 transition-transform duration-1000"
+            style={{ 
+              backgroundImage: `url(${bannerUrl})`,
+              backgroundPosition: profileUser.bannerPosition || '50% 50%'
+            }}
         ></div>
         <div className={`absolute inset-0 ${themeMode === 'dark' ? 'bg-gradient-to-b from-transparent via-black/40 to-black/90' : 'bg-gradient-to-b from-transparent via-white/20 to-white/60'}`}></div>
         {isOwnProfile && (

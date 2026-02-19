@@ -57,6 +57,8 @@ export interface User {
   avatarUrl?: string;
   /** Custom profile banner image/gif URL; if set, overrides favorite agent banner */
   bannerUrl?: string;
+  /** CSS background-position for banner (e.g. "50% 30%"); user chooses visible area when uploading */
+  bannerPosition?: string;
   riotId?: string; // Player Name
   riotTag?: string; // #EUW
   points: number; // MMR

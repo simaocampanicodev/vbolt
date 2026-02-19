@@ -183,6 +183,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
       friendQuestCountedIds: userData.friend_quest_counted_ids || [],
       avatarUrl: userData.avatarUrl,
       bannerUrl: userData.bannerUrl,
+      bannerPosition: userData.bannerPosition,
       riotId: userData.riotId,
       riotTag: userData.riotTag,
       lastSeenAt: userData.lastSeenAt,
@@ -240,6 +241,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         dbUpdates.bannerUrl = updates.bannerUrl;
       }
     }
+    if (updates.bannerPosition !== undefined) dbUpdates.bannerPosition = updates.bannerPosition;
 
     if (updates.lastPointsChange !== undefined) dbUpdates.lastPointsChange = updates.lastPointsChange;
     if (updates.lastDailyQuestGeneration !== undefined) dbUpdates.lastDailyQuestGeneration = updates.lastDailyQuestGeneration;
@@ -286,6 +288,7 @@ export const getAllUsers = async (): Promise<User[]> => {
         friendQuestCountedIds: u.friend_quest_counted_ids || [],
         avatarUrl: u.avatarUrl,
         bannerUrl: u.bannerUrl,
+        bannerPosition: u.bannerPosition,
         riotId: u.riotId,
         riotTag: u.riotTag,
         lastSeenAt: u.lastSeenAt,
@@ -328,13 +331,14 @@ export const getUserById = async (userId: string): Promise<User | null> => {
       friends: u.friends || [],
       friendRequests: u.friend_requests || [],
       friendQuestCountedIds: u.friend_quest_counted_ids || [],
-      avatarUrl: u.avatarUrl,
-      bannerUrl: u.bannerUrl,
-      riotId: u.riotId,
-      riotTag: u.riotTag,
-      lastSeenAt: u.lastSeenAt,
-      role: (u.role as UserRole) || 'user',
-      verified: !!u.verified
+        avatarUrl: u.avatarUrl,
+        bannerUrl: u.bannerUrl,
+        bannerPosition: u.bannerPosition,
+        riotId: u.riotId,
+        riotTag: u.riotTag,
+        lastSeenAt: u.lastSeenAt,
+        role: (u.role as UserRole) || 'user',
+        verified: !!u.verified
     } as User;
   } catch (error) {
     console.error('❌ Erro ao buscar usuário:', error);

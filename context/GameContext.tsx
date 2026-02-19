@@ -140,7 +140,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           secondaryRole: d.secondary_role as GameRole, topAgents: d.top_agents || [],
           isBot: false, activeQuests: d.active_quests || [], friends: d.friends || [],
           friendRequests: d.friend_requests || [], friendQuestCountedIds: d.friend_quest_counted_ids || [],
-          avatarUrl: d.avatarUrl, bannerUrl: d.bannerUrl, riotId: d.riotId, riotTag: d.riotTag,
+          avatarUrl: d.avatarUrl, bannerUrl: d.bannerUrl, bannerPosition: d.bannerPosition, riotId: d.riotId, riotTag: d.riotTag,
           lastPointsChange: d.lastPointsChange, lastSeenAt: d.lastSeenAt,
           role: (d.role as UserRole) || 'user', verified: !!d.verified
         };
@@ -364,6 +364,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           friendQuestCountedIds: data.friend_quest_counted_ids || [],
           avatarUrl: data.avatarUrl,
           bannerUrl: data.bannerUrl,
+          bannerPosition: data.bannerPosition,
           username: data.username,
           points: data.points,
           wins: data.wins,
@@ -763,6 +764,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             friendQuestCountedIds: d.friend_quest_counted_ids || [],
             avatarUrl: d.avatarUrl,
             bannerUrl: d.bannerUrl,
+            bannerPosition: d.bannerPosition,
             riotId: d.riotId,
             riotTag: d.riotTag,
             lastPointsChange: d.lastPointsChange,
