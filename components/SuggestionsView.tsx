@@ -6,6 +6,7 @@ import { Send, Lightbulb } from 'lucide-react';
 
 const SuggestionsView = () => {
   const { themeMode, submitTicket } = useGame();
+  const { tickets } = useGame();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -122,6 +123,30 @@ const SuggestionsView = () => {
         <p className="text-xs text-zinc-500 mt-4">
           Your username will be visible to staff. Suggestions appear in the admin dashboard.
         </p>
+      </Card>
+      {/* Answered suggestions zone */}
+      <Card className="mt-6">
+        <div className="flex items-center gap-2 mb-4 text-zinc-400">
+          <Lightbulb className="w-5 h-5" />
+          <h3 className="text-sm font-bold uppercase tracking-widest">Answered suggestions</h3>
+        </div>
+        {tickets && tickets.filter(t => t.type === 'suggestion' && t.reply).length > 0 ? (
+          <div className="space-y-3">
+            {tickets
+              .filter(t => t.type === 'suggestion' && t.reply)
+              .map(t => (
+                <div key={t.id} className="p-3 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">{t.subject || (t.parts && t.parts.title) || 'Suggestion'}</div>
+                    <div className="text-xs text-zinc-500">by {t.username} • answered by {t.reply?.replierUsername}</div>
+                    <div className="mt-2 text-zinc-300 text-sm">{t.reply?.text}</div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500">No answered suggestions yet.</p>
+        )}
       </Card>
     </div>
   );

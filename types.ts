@@ -83,6 +83,14 @@ export interface User {
   // Social
   friends: string[]; // List of User IDs
   friendRequests: FriendRequest[];
+  /** Optional external tracker URL (must contain word "tracker" to be saved) */
+  trackerUrl?: string;
+  /** Timestamp when trackerUrl was added */
+  trackerAddedAt?: number;
+  /** Optional Twitch URL (must contain word "twitch" to be saved) */
+  twitchUrl?: string;
+  /** Timestamp when twitchUrl was added */
+  twitchAddedAt?: number;
 
   // Quests
   activeQuests: UserQuest[];

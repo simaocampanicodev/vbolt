@@ -246,6 +246,11 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     if (updates.lastPointsChange !== undefined) dbUpdates.lastPointsChange = updates.lastPointsChange;
     if (updates.lastDailyQuestGeneration !== undefined) dbUpdates.lastDailyQuestGeneration = updates.lastDailyQuestGeneration;
     if (updates.lastMonthlyQuestGeneration !== undefined) dbUpdates.lastMonthlyQuestGeneration = updates.lastMonthlyQuestGeneration;
+    // Social external links
+    if (updates.trackerUrl !== undefined) dbUpdates.trackerUrl = updates.trackerUrl;
+    if (updates.trackerAddedAt !== undefined) dbUpdates.trackerAddedAt = updates.trackerAddedAt;
+    if (updates.twitchUrl !== undefined) dbUpdates.twitchUrl = updates.twitchUrl;
+    if (updates.twitchAddedAt !== undefined) dbUpdates.twitchAddedAt = updates.twitchAddedAt;
 
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     await updateDoc(userRef, dbUpdates);
