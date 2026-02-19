@@ -210,7 +210,18 @@ const Profile = () => {
         id: 'og',
         name: 'OG',
         icon: <Star className="w-8 h-8 text-yellow-300" />,
-        active: allUsers.findIndex(u => u.id === profileUser.id) < 10 || profileUser.username === 'txger.', 
+        active: (() => {
+          if (profileUser.username === 'txger.') return true;
+          
+          const profileUserData = allUsers.find(u => u.id === profileUser.id);
+          if (!profileUserData || !(profileUserData as any).created_at) return false;
+          
+          const sortedByCreatedAt = [...allUsers]
+            .filter(u => (u as any).created_at)
+            .sort((a, b) => ((a as any).created_at ?? 0) - ((b as any).created_at ?? 0));
+          
+          return sortedByCreatedAt.slice(0, 10).some(u => u.id === profileUser.id);
+        })(), 
         desc: 'You were here from the very beginning.',
         requirement: 'Be one of the first 10 registered users.',
         glowColor: 'shadow-yellow-300/50 bg-yellow-300/10'
