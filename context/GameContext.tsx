@@ -1095,28 +1095,41 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const claimQuestReward = async (questId: string) => {
     if (!currentUser.id) return;
 
-    // 1. Atualize a quest como "claimed" no array activeQuests
-    const updatedQuests = currentUser.activeQuests.map(q =>
-      q.questId === questId ? { ...q, claimed: true } : q
-    );
+    // Verificar se a quest já foi claimed (prevenção de spam)
+    const quest = currentUser.activeQuests?.find(q => q.questId === questId);
+    if (!quest || quest.claimed) {
+      console.warn('Quest already claimed!');
+      showToast('Quest already claimed!', 'warning');
+      return;
+    }
 
-    // 2. Descubra o XP da quest
-    const questDef = QUEST_POOL.find(q => q.id === questId);
-    const xpReward = questDef ? questDef.xpReward : 0;
+    try {
+      const updatedQuests = currentUser.activeQuests.map(q =>
+        q.questId === questId ? { ...q, claimed: true } : q
+      );
 
-    // 3. Atualize o usuário no Firestore
-    const userRef = doc(db, 'users', currentUser.id);
-    await updateDoc(userRef, {
-      active_quests: updatedQuests,
-      xp: (currentUser.xp || 0) + xpReward,
-    });
+      const questDef = QUEST_POOL.find(q => q.id === questId);
+      const xpReward = questDef ? questDef.xpReward : 0;
 
-    // 4. Atualize o estado local (opcional, para UX)
-    setCurrentUser({
-      ...currentUser,
-      activeQuests: updatedQuests,
-      xp: (currentUser.xp || 0) + xpReward,
-    });
+      const userRef = doc(db, 'users', currentUser.id);
+      await updateDoc(userRef, {
+        active_quests: updatedQuests,
+        xp: (currentUser.xp || 0) + xpReward,
+      });
+
+      setCurrentUser({
+        ...currentUser,
+        activeQuests: updatedQuests,
+        xp: (currentUser.xp || 0) + xpReward,
+        level: calculateLevel((currentUser.xp || 0) + xpReward)
+      });
+
+      showToast(`+${xpReward} XP claimed!`, 'success');
+      console.log(`✅ Quest reward claimed: ${xpReward} XP`);
+    } catch (error: any) {
+      console.error('❌ Erro ao claimar reward:', error);
+      showToast(error.message || 'Failed to claim reward', 'error');
+    }
   };
 
   const completeRegistration = async (data: RegisterData) => {
