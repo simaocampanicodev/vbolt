@@ -1093,41 +1093,30 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const claimQuestReward = async (questId: string) => {
-    if (!isAuthenticated) return;
-    
-    console.log(`🎁 Resgatando recompensa da quest: ${questId}`);
-    
-    const userQuest = currentUser.activeQuests.find(uq => uq.questId === questId);
-    if (!userQuest || !userQuest.completed || userQuest.claimed) {
-      console.log('❌ Quest não pode ser resgatada:', { userQuest });
-      return;
-    }
-    
-    const questDef = QUEST_POOL.find(q => q.id === questId);
-    if (!questDef) {
-      console.log('❌ Quest não encontrada no pool');
-      return;
-    }
-    
-    // Marcar quest como claimed
-    const updatedQuests = currentUser.activeQuests.map(uq => 
-      uq.questId === questId ? { ...uq, claimed: true } : uq
+    if (!currentUser.id) return;
+
+    // 1. Atualize a quest como "claimed" no array activeQuests
+    const updatedQuests = currentUser.activeQuests.map(q =>
+      q.questId === questId ? { ...q, claimed: true } : q
     );
-    
-    // Adicionar XP
-    const newXP = currentUser.xp + questDef.xpReward;
-    const { level: newLevel } = getLevelProgress(newXP);
-    
-    try {
-      await updateProfile({
-        activeQuests: updatedQuests,
-        xp: newXP,
-        level: newLevel
-      });
-      showToast(`Quest Completed! +${questDef.xpReward} XP`, 'success');
-    } catch (err) {
-      showToast('Erro ao resgatar recompensa. Tente novamente.', 'error');
-    }
+
+    // 2. Descubra o XP da quest
+    const questDef = QUEST_POOL.find(q => q.id === questId);
+    const xpReward = questDef ? questDef.xpReward : 0;
+
+    // 3. Atualize o usuário no Firestore
+    const userRef = doc(db, 'users', currentUser.id);
+    await updateDoc(userRef, {
+      active_quests: updatedQuests,
+      xp: (currentUser.xp || 0) + xpReward,
+    });
+
+    // 4. Atualize o estado local (opcional, para UX)
+    setCurrentUser({
+      ...currentUser,
+      activeQuests: updatedQuests,
+      xp: (currentUser.xp || 0) + xpReward,
+    });
   };
 
   const completeRegistration = async (data: RegisterData) => {
