@@ -388,7 +388,7 @@ const AdminDashboard = () => {
                 value={roleAndVerified}
                 onChange={e => setRoleAndVerified(e.target.value)}
                 className={`w-full rounded-xl px-4 py-3.5 border outline-none text-base font-medium ${
-                  themeMode === 'dark' ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-zinc-200 text-zinc-900'
+                  themeMode === 'dark' ? 'bg-zinc-800 border-white/10 text-white' : 'bg-zinc-800 border-white/10 text-white'
                 }`}
               >
                 <option value="user">User</option>
