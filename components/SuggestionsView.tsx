@@ -153,7 +153,7 @@ const SuggestionsView = () => {
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm">{t.username}</div>
                         <div className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                          {new Date(t.timestamp).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {new Date(t.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {new Date(t.timestamp).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {new Date(t.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit'})}
                         </div>
                       </div>
                     </div>
@@ -192,7 +192,7 @@ const SuggestionsView = () => {
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm text-emerald-400">{t.reply.replierUsername}</div>
                         <div className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                          {new Date(t.reply.repliedAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {new Date(t.reply.repliedAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {new Date(t.reply.repliedAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {new Date(t.reply.repliedAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit'})}
                         </div>
                         <p className={`text-sm mt-2 ${themeMode === 'dark' ? 'text-zinc-300' : 'text-zinc-800'}`}>
                           {t.reply.text}
