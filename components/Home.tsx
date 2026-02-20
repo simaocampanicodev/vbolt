@@ -249,7 +249,7 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string) => void }) =>
 
             {lastMatch ? (
               <div className={`p-4 rounded-2xl border cursor-pointer hover:border-zinc-500 transition-colors ${themeMode === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-zinc-50 border-zinc-200'} flex items-center gap-4`}>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${lastMatchWon ? 'bg-rose-500/10 text-rose-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${lastMatchWon ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                   {lastMatchWon ? 'W' : 'L'}
                 </div>
                 <div>

@@ -1220,7 +1220,7 @@ const Profile = () => {
                 {recentForm.length > 0 ? (
                   recentForm.map((result, i) => (
                     <div key={i} className="flex flex-col items-center">
-                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-110 ${result === 'W' ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-zinc-500/20 text-zinc-500 border border-zinc-500/30'}`}>
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-110 ${result === 'W' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'bg-red-500/20 text-red-400 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)]'}`}>
                         {result}
                       </div>
                     </div>

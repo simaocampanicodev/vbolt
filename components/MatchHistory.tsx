@@ -22,7 +22,7 @@ const MatchHistory = () => {
         if (!a.includes(currentUser.id) && !b.includes(currentUser.id)) return 'border-zinc-500/20';
         const myTeam = a.includes(currentUser.id) ? 'A' : 'B';
         const won = myTeam === match.winner;
-        return won ? 'border-rose-500/50 bg-rose-500/5' : 'border-zinc-500/50 bg-zinc-500/5';
+        return won ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-red-500/50 bg-red-500/5';
     };
 
     const getResultText = (match: MatchRecord) => {
@@ -41,8 +41,8 @@ const MatchHistory = () => {
         const myTeam = a.includes(currentUser.id) ? 'A' : 'B';
         const won = myTeam === match.winner;
 
-        if (won) return 'bg-rose-500 text-white border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]';
-        return 'bg-zinc-600 text-white border-zinc-600 shadow-[0_0_10px_rgba(82,82,91,0.4)]';
+        if (won) return 'bg-emerald-500 text-white border-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]';
+        return 'bg-red-600 text-white border-red-600 shadow-[0_0_10px_rgba(239,68,68,0.4)]';
     };
 
     const toggleExpand = (id: string) => {
