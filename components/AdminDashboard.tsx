@@ -295,64 +295,20 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                     )}
-                                        {/* Reply UI / display */}
-                    <div className="mt-3 space-y-3">
+                    {/* Reply UI / display */}
+                    <div className="mt-3">
                       {ticket.reply ? (
-                        <div className="mt-2 space-y-3">
-                          {/* Original Message Section */}
-                          <div className={`p-3 rounded-lg border ${themeMode === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center flex-shrink-0">
-                                {allUsers.find(u => u.id === ticket.userId)?.avatarUrl ? (
-                                  <img src={allUsers.find(u => u.id === ticket.userId)?.avatarUrl} className="w-full h-full object-cover" alt={ticket.username} />
-                                ) : (
-                                  <span className="text-sm font-bold">{ticket.username[0]}</span>
-                                )}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">{ticket.username}</div>
-                                <div className="text-[10px] text-zinc-500">{new Date(ticket.timestamp).toLocaleString()}</div>
-                              </div>
+                        <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/5">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
+                              {ticket.reply.replierAvatarUrl ? <img src={ticket.reply.replierAvatarUrl} className="w-full h-full object-cover" /> : ticket.reply.replierUsername[0]}
                             </div>
-                            {ticket.subject && (
-                              <p className={`text-sm font-bold mb-2 ${themeMode === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>
-                                {ticket.subject}
-                              </p>
-                            )}
-                            {ticket.message && (
-                              <p className={`text-sm mb-2 ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                                {ticket.message}
-                              </p>
-                            )}
-                            {ticket.parts && Object.keys(ticket.parts).length > 0 && (
-                              <div className="mt-2 space-y-2 text-xs">
-                                {Object.entries(ticket.parts).map(([key, value]) => (
-                                  <div key={key}>
-                                    <span className="text-zinc-500 uppercase font-bold">{key}:</span>
-                                    <p className={`${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-700'}`}>{value}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Reply Section */}
-                          <div className={`p-3 rounded-lg border border-emerald-500/30 ${themeMode === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center flex-shrink-0">
-                                {ticket.reply.replierAvatarUrl ? (
-                                  <img src={ticket.reply.replierAvatarUrl} className="w-full h-full object-cover" alt={ticket.reply.replierUsername} />
-                                ) : (
-                                  <span className="text-sm font-bold">{ticket.reply.replierUsername[0]}</span>
-                                )}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-emerald-400">{ticket.reply.replierUsername}</div>
-                                <div className="text-[10px] text-zinc-500">{new Date(ticket.reply.repliedAt).toLocaleString()}</div>
-                              </div>
+                            <div>
+                              <div className="text-sm font-medium">{ticket.reply.replierUsername}</div>
+                              <div className="text-[10px] text-zinc-500">{new Date(ticket.reply.repliedAt).toLocaleString()}</div>
                             </div>
-                            <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>{ticket.reply.text}</div>
                           </div>
+                          <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>{ticket.reply.text}</div>
                         </div>
                       ) : (
                         // If suggestion and staff can reply, show draft box
