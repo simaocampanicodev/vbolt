@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import { Send, Lightbulb } from 'lucide-react';
 
 const SuggestionsView = () => {
-  const { themeMode, submitTicket } = useGame();
+  const { themeMode, submitTicket, allUsers } = useGame();
   const { tickets } = useGame();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -140,13 +140,20 @@ const SuggestionsView = () => {
                   {/* Original Suggestion */}
                   <div className="mb-4 pb-4 border-b border-white/10">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center flex-shrink-0">
-                        {t.username[0]}
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center flex-shrink-0 flex-shrink-0">
+                        {(() => {
+                          const author = allUsers.find(u => u.id === t.userId);
+                          return author?.avatarUrl ? (
+                            <img src={author.avatarUrl} alt={t.username} className="w-full h-full object-cover" />
+                          ) : (
+                            t.username[0]
+                          );
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm">{t.username}</div>
                         <div className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                          {new Date(t.timestamp).toLocaleString()}
+                          {new Date(t.timestamp).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                         </div>
                       </div>
                     </div>
