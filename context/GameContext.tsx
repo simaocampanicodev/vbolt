@@ -1357,8 +1357,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   // [Quests code continua igual...]
   const generateQuestsIfNeeded = useCallback(
     (forceReset = false) => {
-      if (!isAuthenticated || !currentUser.id || currentUser.id === "user-1")
+      if (!isAuthenticated || !currentUser.id || currentUser.id === "user-1") {
+        console.log("🚫 generateQuestsIfNeeded: usuário não autenticado ou é guest");
         return;
+      }
+      
+      console.log("🎯 generateQuestsIfNeeded chamado", { forceReset, userId: currentUser.id, activeQuests: currentUser.activeQuests });
+      
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
       const oneMonth = 30 * oneDay;
@@ -1368,6 +1373,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       const monthlyExpired = now - lastMonthly >= oneMonth;
       const hasNoQuests =
         !currentUser.activeQuests || currentUser.activeQuests.length === 0;
+
+      console.log("📊 Status:", { now, lastDaily, dailyExpired, monthlyExpired, hasNoQuests, activeQuestsCount: currentUser.activeQuests?.length });
 
       if (!forceReset && !hasNoQuests && !dailyExpired && !monthlyExpired) {
         // Verificar se temos exatamente 3 quests diárias, incluindo a q_daily_play_3
@@ -1451,6 +1458,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
           ...selectedOtherDailies, 
           { questId: 'q_daily_play_3', progress: 0, completed: false, claimed: false }
         ];
+        
+        console.log("✅ Novas daily quests geradas:", newDailies.map(q => q.questId));
 
         next = [
           ...newDailies,
@@ -1521,12 +1530,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         }
       }
 
+      console.log("💾 Salvando quests no Firestore:", next.map(q => q.questId));
+      
       const updates: Partial<User> = { activeQuests: next };
       if (forceReset || hasNoQuests || dailyExpired)
         updates.lastDailyQuestGeneration = now;
       if (forceReset || hasNoQuests || monthlyExpired)
         updates.lastMonthlyQuestGeneration = now;
       updateProfile(updates);
+      
+      console.log("✅ Quests atualizadas com sucesso!");
     },
     [
       isAuthenticated,
