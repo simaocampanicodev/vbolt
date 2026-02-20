@@ -10,7 +10,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }) => {
-  const { isAuthenticated, logout, themeMode, toggleTheme, matchState, currentUser, hasDashboardAccess, setViewProfileId, queue, queueJoinedAt } = useGame();
+  const { isAuthenticated, logout, themeMode, matchState, currentUser, hasDashboardAccess, setViewProfileId, queue, queueJoinedAt } = useGame();
   const [queueElapsed, setQueueElapsed] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -29,7 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
       setQueueElapsed(diff > 0 ? diff : 0);
     };
     update();
-    const id = setInterval(update, 1000);
+    const id = setInterval(update, 500);
     return () => clearInterval(id);
   }, [isInQueue, queueJoinedAt]);
 
