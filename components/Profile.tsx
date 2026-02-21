@@ -436,8 +436,8 @@ const Profile = () => {
         setSocialError('Link cannot be empty');
         return;
       }
-      if (!v.toLowerCase().includes('tracker')) {
-        setSocialError('Link must contain the word "tracker"');
+      if (!v.toLowerCase().includes('https://tracker.gg/valorant/profile')) {
+        setSocialError('Link must contain the word "https://tracker.gg/valorant/profile"');
         return;
       }
       try {
@@ -454,8 +454,8 @@ const Profile = () => {
         setSocialError('Link cannot be empty');
         return;
       }
-      if (!v.toLowerCase().includes('twitch')) {
-        setSocialError('Link must contain the word "twitch"');
+      if (!v.toLowerCase().includes('https://twitch.tv/')) {
+        setSocialError('Link must contain the word "https://twitch.tv/"');
         return;
       }
       try {
@@ -725,7 +725,7 @@ const Profile = () => {
                 {/* Helper Text */}
                 <div className={`text-xs ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-500'} bg-white/5 rounded-lg p-3 border border-white/10`}>
                   <p className="font-semibold mb-1">Make sure your link contains:</p>
-                  <p>✓ {socialModalEditingType === 'tracker' ? '"tracker"' : '"twitch"'}</p>
+                  <p>✓ {socialModalEditingType === 'tracker' ? '"https://tracker.gg/valorant/profile/"' : '"https://twitch.tv/"'}</p>
                 </div>
 
                 {/* Remove Link (only shown when a link already exists) */}
