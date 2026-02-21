@@ -20,10 +20,11 @@ const AppContent = () => {
   const [currentView, setCurrentView] = useState('home');
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
 
-  // If viewProfileId is set, force switch to profile view
+  // If viewProfileId is set, force switch to profile view and scroll to top
   useEffect(() => {
     if (viewProfileId) {
       setCurrentView('profile');
+      window.scrollTo(0, 0);
     }
   }, [viewProfileId]);
 
