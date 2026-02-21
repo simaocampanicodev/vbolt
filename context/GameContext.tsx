@@ -26,6 +26,7 @@ import {
   Ticket,
   TicketType,
   UserRole,
+  AppNotification,
 } from "../types";
 import {
   INITIAL_POINTS,
@@ -150,6 +151,10 @@ export interface GameContextType {
   ) => Promise<void>;
   resetDailyQuests: () => void;
   updateTicket: (ticketId: string, updates: Partial<Ticket>) => Promise<void>;
+  notifications: AppNotification[];
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  createNotification: (targetUserId: string, type: AppNotification['type'], message: string, data?: AppNotification['data']) => Promise<void>;
 }
 
 const initialUser: User = {
@@ -176,54 +181,58 @@ export const GameContext = React.createContext<GameContextType>({
   isAuthenticated: false,
   isAdmin: false,
   hasDashboardAccess: false,
-  completeRegistration: async () => {},
-  logout: () => {},
+  completeRegistration: async () => { },
+  logout: () => { },
   currentUser: initialUser,
   pendingAuthUser: null,
-  updateProfile: async () => {},
-  linkRiotAccount: async () => {},
+  updateProfile: async () => { },
+  linkRiotAccount: async () => { },
   queue: [],
   queueJoinedAt: null,
-  joinQueue: async () => {},
-  leaveQueue: async () => {},
-  testFillQueue: () => {},
-  createTestMatchDirect: async () => {},
-  exitMatchToLobby: async () => {},
+  joinQueue: async () => { },
+  leaveQueue: async () => { },
+  testFillQueue: () => { },
+  createTestMatchDirect: async () => { },
+  exitMatchToLobby: async () => { },
   matchState: null,
-  acceptMatch: async () => {},
-  draftPlayer: async () => {},
-  vetoMap: async () => {},
+  acceptMatch: async () => { },
+  draftPlayer: async () => { },
+  vetoMap: async () => { },
   reportResult: async () => ({ success: false }),
-  sendChatMessage: async () => {},
+  sendChatMessage: async () => { },
   matchHistory: [],
   allUsers: [],
   reports: [],
-  submitReport: () => {},
-  replyToTicket: async () => {},
-  commendPlayer: async () => {},
-  resetMatch: async () => {},
-  forceTimePass: () => {},
-  resetSeason: async () => {},
+  submitReport: () => { },
+  replyToTicket: async () => { },
+  commendPlayer: async () => { },
+  resetMatch: async () => { },
+  forceTimePass: () => { },
+  resetSeason: async () => { },
   themeMode: "dark",
-  handleBotAction: () => {},
+  handleBotAction: () => { },
   viewProfileId: null,
-  setViewProfileId: () => {},
-  claimQuestReward: () => {},
-  sendFriendRequest: async () => {},
-  acceptFriendRequest: async () => {},
-  rejectFriendRequest: async () => {},
-  removeFriend: async () => {},
+  setViewProfileId: () => { },
+  claimQuestReward: () => { },
+  sendFriendRequest: async () => { },
+  acceptFriendRequest: async () => { },
+  rejectFriendRequest: async () => { },
+  removeFriend: async () => { },
   matchInteractions: [],
-  markPlayerAsInteracted: () => {},
-  showToast: () => {},
-  removeToast: () => {},
+  markPlayerAsInteracted: () => { },
+  showToast: () => { },
+  removeToast: () => { },
   toasts: [],
   tickets: [],
-  submitTicket: async () => {},
+  submitTicket: async () => { },
   onlineUserIds: new Set(),
-  setUserRole: async () => {},
-  resetDailyQuests: () => {},
-  updateTicket: async () => {},
+  setUserRole: async () => { },
+  resetDailyQuests: () => { },
+  updateTicket: async () => { },
+  notifications: [],
+  markNotificationRead: async () => { },
+  markAllNotificationsRead: async () => { },
+  createNotification: async () => { },
 });
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({
@@ -245,6 +254,55 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   const [matchInteractions, setMatchInteractions] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // ── Helper: write a notification to Firestore subcollection ──
+  const createNotification = useCallback(
+    async (targetUserId: string, type: AppNotification['type'], message: string, data?: AppNotification['data']) => {
+      if (!targetUserId || targetUserId === 'user-1') return;
+      try {
+        const colRef = collection(db, 'notifications', targetUserId, 'items');
+        await addDoc(colRef, { type, message, read: false, timestamp: Date.now(), data: data ?? {} });
+      } catch (e) {
+        console.warn('createNotification failed:', e);
+      }
+    },
+    [],
+  );
+
+  // ── LISTENER: Current user's notifications ──
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id || currentUser.id === 'user-1') return;
+    const colRef = collection(db, 'notifications', currentUser.id, 'items');
+    const q = query(colRef, orderBy('timestamp', 'desc'), limit(50));
+    const unsub = onSnapshot(q, (snap) => {
+      const list: AppNotification[] = snap.docs.map((d) => ({
+        id: d.id,
+        type: d.data().type as AppNotification['type'],
+        message: d.data().message,
+        read: d.data().read ?? false,
+        timestamp: d.data().timestamp ?? 0,
+        data: d.data().data,
+      }));
+      setNotifications(list);
+    });
+    return () => unsub();
+  }, [isAuthenticated, currentUser.id]);
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    if (!currentUser.id || currentUser.id === 'user-1') return;
+    try {
+      await updateDoc(doc(db, 'notifications', currentUser.id, 'items', id), { read: true });
+    } catch (e) { console.warn('markNotificationRead:', e); }
+  }, [currentUser.id]);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!currentUser.id || currentUser.id === 'user-1') return;
+    const unread = notifications.filter(n => !n.read);
+    await Promise.all(unread.map(n =>
+      updateDoc(doc(db, 'notifications', currentUser.id, 'items', n.id), { read: true })
+    ));
+  }, [currentUser.id, notifications]);
 
   const allUsersRef = useRef<User[]>([]);
   /** Bots added via Fill Queue (not in Firestore USERS); kept so queue/match listeners can resolve them immediately */
@@ -804,8 +862,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   // 🔊 TOCAR SOM QUANDO MATCH É ENCONTRADA (apenas uma vez)
-  const soundPlayedRef = useRef<{[key: string]: boolean}>({});
-  
+  const soundPlayedRef = useRef<{ [key: string]: boolean }>({});
+
   useEffect(() => {
     if (matchState?.phase === MatchPhase.READY_CHECK && !soundPlayedRef.current[matchState.id]) {
       try {
@@ -818,7 +876,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         console.log("⚠️ Erro ao tocar som");
       }
     }
-    
+
     // Reset quando sai da fase READY_CHECK
     if (matchState?.phase !== MatchPhase.READY_CHECK) {
       if (matchState?.id && soundPlayedRef.current[matchState.id]) {
@@ -1200,12 +1258,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     const winningTeamAvg =
       validWinningTeam.length > 0
         ? validWinningTeam.reduce((s, u) => s + (u.points ?? 0), 0) /
-          validWinningTeam.length
+        validWinningTeam.length
         : 0;
     const losingTeamAvg =
       validLosingTeam.length > 0
         ? validLosingTeam.reduce((s, u) => s + (u.points ?? 0), 0) /
-          validLosingTeam.length
+        validLosingTeam.length
         : 0;
 
     const pointsChanges: any[] = [];
@@ -1332,15 +1390,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     setMatchState((prev) =>
       prev
         ? {
-            ...prev,
-            phase: MatchPhase.FINISHED,
-            winner,
-            resultReported: true,
-            resultProcessed: false,
-            playerPointsChanges: pointsChanges,
-            reportA: scoreResult,
-            reportB: scoreResult,
-          }
+          ...prev,
+          phase: MatchPhase.FINISHED,
+          winner,
+          resultReported: true,
+          resultProcessed: false,
+          playerPointsChanges: pointsChanges,
+          reportA: scoreResult,
+          reportB: scoreResult,
+        }
         : null,
     );
 
@@ -1460,17 +1518,17 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         const currentUniqueQuests = (currentUser.activeQuests || []).filter((uq) =>
           QUEST_POOL.find((q) => q.id === uq.questId)?.category === "UNIQUE"
         );
-        
+
         const play3Quest = dailyQuests.find(q => q.id === 'q_daily_win_1');
         const otherDailyQuests = dailyQuests.filter(q => q.id !== 'q_daily_win_1');
-        
+
         const selectedOtherDailies = pick(otherDailyQuests, 2);
-        
+
         const newDailies = [
-          ...selectedOtherDailies, 
+          ...selectedOtherDailies,
           { questId: 'q_daily_win_1', progress: 0, completed: false, claimed: false }
         ];
-        
+
         next = [
           ...newDailies,
           ...pick(monthlyQuests, 2),
@@ -1499,15 +1557,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
             return { ...uq, progress: 0, completed: false, claimed: false };
           return uq;
         }).filter(Boolean) as UserQuest[];
-        
+
         if (dailyExpired) {
           const existingDailyIds = next.filter(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category === 'DAILY').map(uq => uq.questId);
-          
+
           // Se não tivermos q_daily_win_1, garantir que ela seja adicionada
           if (!existingDailyIds.includes('q_daily_win_1')) {
             next.push({ questId: 'q_daily_win_1', progress: 0, completed: false, claimed: false });
           }
-          
+
           // Garantir que temos sempre 3 quests diárias no total
           const currentDailyCount = next.filter(uq => QUEST_POOL.find(q => q.id === uq.questId)?.category === 'DAILY').length;
           if (currentDailyCount < 3) {
@@ -1516,7 +1574,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
             toAdd.forEach(q => next.push({ questId: q.id, progress: 0, completed: false, claimed: false }));
           }
         }
-        
+
         if (monthlyExpired) {
           const existingMonthlyIds = next
             .filter(
@@ -1959,14 +2017,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     setMatchState((prev) =>
       prev
         ? {
-            ...prev,
-            teamA: newTeamA,
-            teamB: newTeamB,
-            remainingPool: newPool,
-            turn: newTurn,
-            phase: newPhase,
-            chat: [...prev.chat, newChatEntry],
-          }
+          ...prev,
+          teamA: newTeamA,
+          teamB: newTeamB,
+          remainingPool: newPool,
+          turn: newTurn,
+          phase: newPhase,
+          chat: [...prev.chat, newChatEntry],
+        }
         : null,
     );
     console.log(
@@ -2009,13 +2067,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     setMatchState((prev) =>
       prev
         ? {
-            ...prev,
-            remainingMaps: newMaps,
-            bannedMaps: [...bannedMaps, newBannedMap],
-            turn: newTurn,
-            selectedMap: newMaps.length === 1 ? newMaps[0] : prev.selectedMap,
-            chat: [...prev.chat, newChatEntry],
-          }
+          ...prev,
+          remainingMaps: newMaps,
+          bannedMaps: [...bannedMaps, newBannedMap],
+          turn: newTurn,
+          selectedMap: newMaps.length === 1 ? newMaps[0] : prev.selectedMap,
+          chat: [...prev.chat, newChatEntry],
+        }
         : null,
     );
     console.log(`🗺️ Mapa ${map} banido por ${currentUser.username}`);
@@ -2339,8 +2397,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
       await updateDoc(doc(db, COLLECTIONS.USERS, fromId), senderUpdates);
 
-      console.log("✅ Friend request aceito!");
-      showToast("Friend request accepted!", "success");
+      console.log('✅ Friend request aceito!');
+      showToast('Friend request accepted!', 'success');
+      // Notify the original sender that their request was accepted
+      createNotification(fromId, 'FRIEND_REQUEST_ACCEPTED', `${currentUser.username} accepted your friend request!`);
     } catch (error: any) {
       console.error("❌ Erro ao aceitar friend request:", error);
       showToast(error.message || "Error accepting friend request", "error");
@@ -2357,7 +2417,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         ),
       });
 
-      console.log("✅ Friend request rejeitado");
+      // Notify the original sender that their request was rejected
+      createNotification(fromId, 'FRIEND_REQUEST_REJECTED', `${currentUser.username} declined your friend request.`);
+      console.log('✅ Friend request rejeitado');
     } catch (error) {
       console.error("❌ Erro ao rejeitar friend request:", error);
     }
@@ -2396,6 +2458,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     await updateDoc(doc(db, COLLECTIONS.USERS, targetUserId), {
       reputation: (target.reputation || 0) + 1,
     });
+    createNotification(targetUserId, 'COMMEND_RECEIVED', `${currentUser.username} commended you after a match! 🌟`);
   };
 
   const submitReport = (targetUserId: string, reason: string) => {
@@ -2494,7 +2557,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       console.log(`🤖 Bot drafting...`);
       draftPlayer(
         matchState.remainingPool[
-          Math.floor(Math.random() * matchState.remainingPool.length)
+        Math.floor(Math.random() * matchState.remainingPool.length)
         ],
       );
     } else if (
@@ -2504,7 +2567,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       // Don't veto when only 1 map left – it's auto-selected; vetoing would clear it
       const mapToVeto =
         matchState.remainingMaps[
-          Math.floor(Math.random() * matchState.remainingMaps.length)
+        Math.floor(Math.random() * matchState.remainingMaps.length)
         ];
       console.log(`🤖 Bot vetoing map: ${mapToVeto}`);
       vetoMap(mapToVeto);
@@ -2608,12 +2671,27 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       try {
         const ticketRef = doc(db, COLLECTIONS.TICKETS, ticketId);
         await updateDoc(ticketRef, updates);
+        // Notify suggestion owner when someone likes their suggestion
+        if (updates.likes && isAuthenticated) {
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket && ticket.userId !== currentUser.id) {
+            const prevLikes = ticket.likes || [];
+            const newLikes = updates.likes as string[];
+            if (newLikes.length > prevLikes.length && newLikes.includes(currentUser.id)) {
+              createNotification(
+                ticket.userId,
+                'SUGGESTION_LIKED',
+                `${currentUser.username} liked your suggestion "${ticket.subject || 'Suggestion'}"! ❤️`,
+              );
+            }
+          }
+        }
       } catch (e: any) {
         console.error('Failed to update ticket:', e);
         showToast('Failed to update ticket', 'error');
       }
     },
-    [showToast]
+    [showToast, tickets, currentUser.id, currentUser.username, isAuthenticated, createNotification]
   );
 
   return (
@@ -2670,6 +2748,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         setUserRole,
         resetDailyQuests,
         updateTicket,
+        notifications,
+        markNotificationRead,
+        markAllNotificationsRead,
+        createNotification,
       }}
     >
       {children}

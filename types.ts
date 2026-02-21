@@ -42,9 +42,9 @@ export interface UserQuest {
 }
 
 export interface FriendRequest {
-    fromId: string;
-    toId: string;
-    timestamp: number;
+  fromId: string;
+  toId: string;
+  timestamp: number;
 }
 
 /** Staff/display role: owner, mod and dev get dashboard access */
@@ -189,26 +189,26 @@ export interface BannedMap {
 export interface MatchState {
   id: string;
   phase: MatchPhase;
-  players: User[]; 
+  players: User[];
   captainA: User | null;
   captainB: User | null;
   teamA: User[];
   teamB: User[];
-  turn: 'A' | 'B'; 
-  remainingPool: User[]; 
+  turn: 'A' | 'B';
+  remainingPool: User[];
   remainingMaps: GameMap[];
   bannedMaps?: BannedMap[]; // ⭐ NOVO: Mapas banidos com informação de quem baniu
   selectedMap: GameMap | null;
   /** Código da partida (inserido pelos capitães) */
   matchCode?: string | null;
-  startTime: number | null; 
+  startTime: number | null;
   resultReported: boolean;
   winner: 'A' | 'B' | null;
-  reportA: MatchScore | null; 
+  reportA: MatchScore | null;
   reportB: MatchScore | null;
   playerReports: PlayerReport[]; // ⭐ Lista de reports de todos os jogadores
   playerPointsChanges: PlayerPointsChange[]; // ⭐ NOVO: Mudanças de pontos individuais após verificação
-  readyPlayers: string[]; 
+  readyPlayers: string[];
   readyExpiresAt?: number;
   chat: ChatMessage[];
 }
@@ -229,10 +229,30 @@ export interface MatchRecord {
   winner: 'A' | 'B';
   teamAIds: string[];
   teamBIds: string[];
-  teamASnapshot: PlayerSnapshot[]; 
-  teamBSnapshot: PlayerSnapshot[]; 
+  teamASnapshot: PlayerSnapshot[];
+  teamBSnapshot: PlayerSnapshot[];
   score: string;
   playerPointsChanges?: PlayerPointsChange[]; // ⭐ NOVO: Mudanças de pontos individuais
 }
 
 export type ThemeMode = 'dark' | 'light';
+
+export type NotificationType =
+  | 'QUEST_READY'
+  | 'FRIEND_REQUEST_RECEIVED'
+  | 'FRIEND_REQUEST_ACCEPTED'
+  | 'FRIEND_REQUEST_REJECTED'
+  | 'MATCH_ENDED'
+  | 'COMMEND_RECEIVED'
+  | 'SUGGESTION_LIKED'
+  | 'FRIEND_MESSAGE';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  message: string;
+  read: boolean;
+  timestamp: number;
+  /** Extra payload (e.g. points delta, suggestion title) */
+  data?: Record<string, string | number | boolean>;
+}

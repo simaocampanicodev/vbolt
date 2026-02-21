@@ -284,44 +284,45 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                     )}
-                    {/* Reply UI / display */}
-                    <div className="mt-3">
-                      {ticket.reply ? (
-                        <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/5">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
-                              {ticket.reply.replierAvatarUrl ? <img src={ticket.reply.replierAvatarUrl} className="w-full h-full object-cover" /> : ticket.reply.replierUsername[0]}
+                    {/* Reply UI / display — only shown for support tickets */}
+                    {ticket.type !== 'suggestion' && (
+                      <div className="mt-3">
+                        {ticket.reply ? (
+                          <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/5">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
+                                {ticket.reply.replierAvatarUrl ? <img src={ticket.reply.replierAvatarUrl} className="w-full h-full object-cover" /> : ticket.reply.replierUsername[0]}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{ticket.reply.replierUsername}</div>
+                                <div className="text-[10px] text-zinc-500">{new Date(ticket.reply.repliedAt).toLocaleString()}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-sm font-medium">{ticket.reply.replierUsername}</div>
-                              <div className="text-[10px] text-zinc-500">{new Date(ticket.reply.repliedAt).toLocaleString()}</div>
-                            </div>
+                            <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>{ticket.reply.text}</div>
                           </div>
-                          <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-200' : 'text-zinc-800'}`}>{ticket.reply.text}</div>
-                        </div>
-                      ) : (
-                        // If suggestion and staff can reply, show draft box
-                        ticket.type === 'suggestion' && (currentUser.role === 'mod' || currentUser.role === 'owner' || currentUser.role === 'dev' || currentUser.role === 'helper') && (
-                          <div className="mt-2">
-                            <textarea
-                              placeholder="Write a reply..."
-                              value={replyDrafts[ticket.id] || ''}
-                              onChange={(e) => setReplyDrafts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                              className="w-full rounded-xl p-3 bg-transparent border border-white/5 text-sm text-white outline-none"
-                            />
-                            <div className="flex gap-2 mt-2">
-                              <Button size="sm" variant="ghost" onClick={() => setReplyDrafts(prev => ({ ...prev, [ticket.id]: '' }))}>Cancel</Button>
-                              <Button size="sm" onClick={async () => {
-                                const txt = (replyDrafts[ticket.id] || '').trim();
-                                if (!txt) return showToast('Reply cannot be empty', 'error');
-                                await replyToTicket(ticket.id, txt);
-                                setReplyDrafts(prev => ({ ...prev, [ticket.id]: '' }));
-                              }}>Reply</Button>
+                        ) : (
+                          (currentUser.role === 'mod' || currentUser.role === 'owner' || currentUser.role === 'dev' || currentUser.role === 'helper') && (
+                            <div className="mt-2">
+                              <textarea
+                                placeholder="Write a reply..."
+                                value={replyDrafts[ticket.id] || ''}
+                                onChange={(e) => setReplyDrafts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                                className="w-full rounded-xl p-3 bg-transparent border border-white/5 text-sm text-white outline-none"
+                              />
+                              <div className="flex gap-2 mt-2">
+                                <Button size="sm" variant="ghost" onClick={() => setReplyDrafts(prev => ({ ...prev, [ticket.id]: '' }))}>Cancel</Button>
+                                <Button size="sm" onClick={async () => {
+                                  const txt = (replyDrafts[ticket.id] || '').trim();
+                                  if (!txt) return showToast('Reply cannot be empty', 'error');
+                                  await replyToTicket(ticket.id, txt);
+                                  setReplyDrafts(prev => ({ ...prev, [ticket.id]: '' }));
+                                }}>Reply</Button>
+                              </div>
                             </div>
-                          </div>
-                        )
-                      )}
-                    </div>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

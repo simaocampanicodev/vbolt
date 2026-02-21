@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { Home, BarChart2, LogOut, History, Moon, Sun, Menu, X, LayoutDashboard, Target, Users, Lightbulb, Swords } from 'lucide-react';
 import Button from './ui/Button';
+import NotificationBell from './NotificationBell';
 
 interface LayoutProps {
     currentView: string;
@@ -114,13 +115,6 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                                 >
                                     <item.icon className="w-4 h-4 mr-2" />
                                     {item.label}
-
-                                    {/* Friend Request Badge (Desktop) */}
-                                    {item.id === 'friends' && friendRequestCount > 0 && (
-                                        <span className="ml-2 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full grid place-items-center leading-none animate-pulse">
-                                            {friendRequestCount}
-                                        </span>
-                                    )}
                                 </button>
                             ))}
                         </nav>
@@ -130,6 +124,9 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                 <div className="flex items-center space-x-2 sm:space-x-4">
                     {isAuthenticated && (
                         <>
+                            {/* Notification bell */}
+                            <NotificationBell />
+
                             {/* User Profile Area */}
                             <button
                                 onClick={handleProfileClick}
