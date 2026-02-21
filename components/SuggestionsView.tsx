@@ -57,7 +57,7 @@ const CATEGORY_BADGE: Record<SectionKey, string> = {
 const ADMIN_CATEGORIES: SectionKey[] = ['Priority', 'In Development', 'Completed', 'Ideas'];
 
 const SuggestionsView = () => {
-  const { themeMode, submitTicket, allUsers, currentUser, updateTicket, tickets } = useGame();
+  const { themeMode, submitTicket, allUsers, currentUser, updateTicket, tickets, isAdmin } = useGame();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sending, setSending] = useState(false);
@@ -106,12 +106,6 @@ const SuggestionsView = () => {
       console.error('Error deleting suggestion:', error);
     }
   };
-
-  const isAdmin =
-    currentUser?.role === 'owner' ||
-    currentUser?.role === 'mod' ||
-    currentUser?.role === 'dev' ||
-    currentUser?.role === 'helper';
 
   const activeSuggestions = (tickets ?? []).filter(
     t => t.type === 'suggestion' && !t.deleted
@@ -174,8 +168,8 @@ const SuggestionsView = () => {
                   placeholder="Short, descriptive title"
                   maxLength={120}
                   className={`w-full rounded-xl p-3 border outline-none transition-colors text-sm ${dark
-                      ? 'bg-black/30 border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/60'
-                      : 'bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-rose-400'
+                    ? 'bg-black/30 border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/60'
+                    : 'bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-rose-400'
                     }`}
                 />
               </div>
@@ -189,8 +183,8 @@ const SuggestionsView = () => {
                   placeholder="Explain your idea in detail..."
                   rows={3}
                   className={`w-full rounded-xl p-3 border outline-none resize-none transition-colors text-sm ${dark
-                      ? 'bg-black/30 border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/60'
-                      : 'bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-rose-400'
+                    ? 'bg-black/30 border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/60'
+                    : 'bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-rose-400'
                     }`}
                 />
               </div>
@@ -249,8 +243,8 @@ const SuggestionsView = () => {
                     <div
                       key={t.id}
                       className={`group relative flex flex-col gap-2 p-3 rounded-xl border transition-all duration-200 ${dark
-                          ? 'bg-white/[0.03] border-white/8 hover:bg-white/[0.06] hover:border-white/15'
-                          : 'bg-black/[0.02] border-black/8 hover:bg-black/[0.05]'
+                        ? 'bg-white/[0.03] border-white/8 hover:bg-white/[0.06] hover:border-white/15'
+                        : 'bg-black/[0.02] border-black/8 hover:bg-black/[0.05]'
                         }`}
                     >
                       {/* Author row */}
@@ -287,10 +281,10 @@ const SuggestionsView = () => {
                           disabled={!currentUser}
                           title={isLiked ? 'Unlike' : 'Like'}
                           className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-[11px] font-semibold ${isLiked
-                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                              : dark
-                                ? 'bg-white/5 text-zinc-500 border border-white/8 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/25'
-                                : 'bg-black/5 text-zinc-400 border border-black/8 hover:text-rose-500 hover:bg-rose-500/10'
+                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            : dark
+                              ? 'bg-white/5 text-zinc-500 border border-white/8 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/25'
+                              : 'bg-black/5 text-zinc-400 border border-black/8 hover:text-rose-500 hover:bg-rose-500/10'
                             }`}
                         >
                           <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
@@ -305,8 +299,8 @@ const SuggestionsView = () => {
                               onChange={e => handleCategoryChange(t.id, e.target.value)}
                               onClick={e => e.stopPropagation()}
                               className={`text-[10px] px-1.5 py-1 rounded-lg border outline-none cursor-pointer ${dark
-                                  ? 'bg-zinc-900 border-white/10 text-zinc-300'
-                                  : 'bg-white border-zinc-200 text-zinc-700'
+                                ? 'bg-zinc-900 border-white/10 text-zinc-300'
+                                : 'bg-white border-zinc-200 text-zinc-700'
                                 }`}
                             >
                               {ADMIN_CATEGORIES.map(cat => (
