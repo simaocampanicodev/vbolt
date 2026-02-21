@@ -17,6 +17,11 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string) => void }) =>
     return idx === -1 ? undefined : idx + 1;
   }, [allUsers, currentUser.id]);
 
+  const totalHumanUsers = useMemo(() => allUsers.filter(u => !u.isBot).length, [allUsers]);
+  const topPercent = leaderboardPosition && totalHumanUsers > 0
+    ? Math.max(1, Math.round((leaderboardPosition / totalHumanUsers) * 100))
+    : 100;
+
   const rank = getRankInfo(currentUser.points, leaderboardPosition);
   const nextRankThreshold = rank.max === Infinity ? rank.min : rank.max;
   const currentTierPoints = rank.min;
@@ -149,7 +154,7 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string) => void }) =>
                 <div className="h-full rounded-full" style={{ width: `${rankProgressPercent}%`, backgroundColor: rank.color }}></div>
               </div>
               <div className="flex justify-between mt-2 text-[10px] text-zinc-500 font-medium uppercase tracking-wider">
-                <span>Top {(Math.random() * 20 + 1).toFixed(0)}% Server</span>
+                <span>Top {topPercent}% Server</span>
                 <span>{currentUser.points}/{nextRankThreshold} RP</span>
               </div>
             </div>
@@ -248,41 +253,36 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string) => void }) =>
             </div>
 
             {lastMatch ? (
-              <div 
-                className={`relative overflow-hidden p-6 rounded-3xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
-                  themeMode === 'dark' 
-                    ? 'bg-[#0a0a0a] border-white/5 hover:border-white/10' 
-                    : 'bg-white border-zinc-200 hover:border-zinc-300'
-                } shadow-lg`}
+              <div
+                className={`relative overflow-hidden p-6 rounded-3xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${themeMode === 'dark'
+                  ? 'bg-[#0a0a0a] border-white/5 hover:border-white/10'
+                  : 'bg-white border-zinc-200 hover:border-zinc-300'
+                  } shadow-lg`}
                 onClick={() => setCurrentView('history')}
               >
                 {/* Gradient Background */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${
-                  lastMatchWon 
-                    ? 'from-emerald-500/10 to-teal-500/10' 
-                    : 'from-red-500/10 to-orange-500/10'
-                }`}></div>
-                
+                <div className={`absolute inset-0 bg-gradient-to-br ${lastMatchWon
+                  ? 'from-emerald-500/10 to-teal-500/10'
+                  : 'from-red-500/10 to-orange-500/10'
+                  }`}></div>
+
                 <div className="relative">
                   {/* Match Result Header */}
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
-                      lastMatchWon 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                        : 'bg-red-500/20 text-red-400 border-red-500/30'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${
-                        lastMatchWon ? 'bg-emerald-400' : 'bg-red-400'
-                      }`}></div>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${lastMatchWon
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      : 'bg-red-500/20 text-red-400 border-red-500/30'
+                      }`}>
+                      <div className={`w-2 h-2 rounded-full ${lastMatchWon ? 'bg-emerald-400' : 'bg-red-400'
+                        }`}></div>
                       <span className="text-xs font-bold uppercase tracking-wider">
                         {lastMatchWon ? 'Victory' : 'Defeat'}
                       </span>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      themeMode === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
-                    }`}>
-                      {new Date(lastMatch.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${themeMode === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                      }`}>
+                      {new Date(lastMatch.date).toLocaleDateString('en-US', {
+                        month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
@@ -292,23 +292,20 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string) => void }) =>
 
                   {/* Match Score */}
                   <div className="flex items-center justify-center mb-4">
-                    <div className={`text-3xl font-display font-bold ${
-                      lastMatchWon ? 'text-emerald-400' : 'text-red-400'
-                    }`}>
+                    <div className={`text-3xl font-display font-bold ${lastMatchWon ? 'text-emerald-400' : 'text-red-400'
+                      }`}>
                       {lastMatch.score}
                     </div>
                   </div>
 
                   {/* Map Name */}
                   <div className="text-center">
-                    <div className={`font-display font-bold text-lg mb-1 ${
-                      themeMode === 'dark' ? 'text-white' : 'text-black'
-                    }`}>
+                    <div className={`font-display font-bold text-lg mb-1 ${themeMode === 'dark' ? 'text-white' : 'text-black'
+                      }`}>
                       {lastMatch.map}
                     </div>
-                    <div className={`text-sm font-medium ${
-                      themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'
-                    }`}>
+                    <div className={`text-sm font-medium ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'
+                      }`}>
                       Click to view match history
                     </div>
                   </div>
