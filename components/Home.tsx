@@ -87,31 +87,33 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Play Card (Hero) */}
         <div className="md:col-span-8 lg:col-span-6 relative rounded-3xl overflow-hidden border border-white/10 group shadow-2xl">
-          <div className="absolute inset-0 bg-[#3f0f1c]">
+          <div className="absolute inset-0 bg-black">
             {/* Grid Background pattern */}
-            <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(244, 63, 94, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(244, 63, 94, 0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            <div className="absolute -top-24 -right-24 w-[320px] h-[320px] rounded-full bg-gradient-to-br from-rose-600/25 to-rose-400/10 blur-2xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent pointer-events-none"></div>
           </div>
 
-          <div className="relative p-8 lg:p-10 h-full flex flex-col justify-between min-h-[320px]">
+          <div className="relative p-8 lg:p-10 h-full flex flex-col justify-between min-h-[380px]">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-wider mb-6 border border-rose-500/20">
-                <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-wider mb-6 border border-white/20">
+                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
                 Competitive
               </div>
               <h2 className="text-4xl lg:text-5xl font-display font-bold text-white leading-tight mb-4">
-                Play with <br /><span className="text-rose-400">Purpose.</span>
+                Find your <br /><span className="text-rose-500">Match.</span>
               </h2>
-              <p className="text-rose-100/60 max-w-sm mt-2 font-medium">
+              <p className="text-white/70 max-w-sm mt-2 font-medium">
                 Enter the queue, play with your friends and claim the leaderboard to be the best.
               </p>
             </div>
-            <div className="mt-8">
+            <div className="mt-8 rounded-2xl border shadow-lg bg-white/[0.04] border-white/10 backdrop-blur-sm overflow-hidden">
               <button
                 onClick={() => setCurrentView('queue')}
-                className="w-full sm:w-auto px-8 py-4 bg-rose-500 hover:bg-rose-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+                className="w-full h-24 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_28px_rgba(244,63,94,0.35)]"
               >
                 <Play className="w-5 h-5 fill-current" />
-                JOIN QUEUE <ChevronRight className="w-4 h-4 ml-1" />
+                FIND MATCH <ChevronRight className="w-4 h-4 ml-1" />
               </button>
             </div>
           </div>
@@ -230,18 +232,20 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
         <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
 
           {/* Roadmap / Community */}
-          <div className={`p-6 rounded-3xl border relative overflow-hidden group cursor-pointer ${themeMode === 'dark' ? 'bg-[#1a050c] border-[#4e1b27]' : 'bg-rose-50 border-rose-100'} shadow-lg`} onClick={() => setCurrentView('suggestions')}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-[50px] rounded-full group-hover:bg-rose-500/20 transition-all duration-500"></div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase tracking-wider mb-4 border border-rose-500/30">
+          <div className={`p-6 rounded-3xl border relative overflow-hidden group cursor-pointer ${themeMode === 'dark' ? 'bg-black border-white/10' : 'bg-rose-50 border-rose-100'} shadow-lg`} onClick={() => setCurrentView('suggestions')}>
+            <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            <div className="absolute -top-24 -right-24 w-[240px] h-[240px] rounded-full bg-gradient-to-br from-rose-600/25 to-rose-400/10 blur-2xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent pointer-events-none"></div>
+            <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider mb-4 border ${themeMode === 'dark' ? 'bg-white/10 text-white border-white/20' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
               <div className="w-1.5 h-1.5 rounded-full bg-rose-400"></div>
               Community
             </div>
             <h3 className={`text-xl font-display font-bold mb-2 ${themeMode === 'dark' ? 'text-white' : 'text-rose-900'}`}>Suggestions</h3>
-            <p className={`text-sm mb-6 ${themeMode === 'dark' ? 'text-rose-200/60' : 'text-rose-900/60'}`}>
+            <p className={`text-sm mb-6 ${themeMode === 'dark' ? 'text-white/70' : 'text-rose-900/60'}`}>
               Vote on suggestions and track development in real-time.
             </p>
-            <button className="w-full py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-500/20 transition-colors hidden sm:block">
-              View Suggestions
+            <button className={`w-full py-3 ${themeMode === 'dark' ? 'bg-white/[0.04] border-white/10 text-white' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'} font-bold text-xs uppercase tracking-wider rounded-xl transition-colors hidden sm:block`}>
+              Explore
             </button>
           </div>
 
