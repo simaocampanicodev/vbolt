@@ -117,8 +117,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentView, setCur
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  /** Click a notification: navigate to the relevant view, mark read, close panel */
+  /** Click a notification */
   const handleNotificationClick = (n: AppNotification) => {
+    if (n.type === 'FRIEND_MESSAGE') {
+      const fromUserId = (n.data as any)?.fromUserId;
+      try {
+        window.dispatchEvent(new CustomEvent('open-chat-bubble', { detail: { userId: fromUserId } }));
+      } catch {}
+      setOpen(false);
+      return;
+    }
     markNotificationRead(n.id);
     const targetView = getTargetView(n.type);
     if (targetView) {

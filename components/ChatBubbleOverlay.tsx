@@ -113,6 +113,17 @@ const ChatBubbleOverlay: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<any>)?.detail || {};
+      setOpen(true);
+      const userId = detail.userId || detail.fromUserId;
+      if (userId) setSelectedChat(userId);
+    };
+    window.addEventListener('open-chat-bubble', handler as EventListener);
+    return () => window.removeEventListener('open-chat-bubble', handler as EventListener);
+  }, []);
+
   const sendTypingSignal = async () => {
     if (!selectedChat || !currentUser.id || currentUser.id === 'user-1') return;
     const now = Date.now();
