@@ -24,7 +24,7 @@ const FriendsView = () => {
     const {
         currentUser, allUsers, sendFriendRequest, acceptFriendRequest,
         rejectFriendRequest, removeFriend, themeMode, setViewProfileId,
-        onlineUserIds, createNotification, clearNotificationsByType,
+        onlineUserIds, createNotification, clearNotificationsByType, notifications,
     } = useGame();
     const [searchTerm, setSearchTerm] = useState('');
     const [showRemoveModal, setShowRemoveModal] = useState<string | null>(null);
@@ -34,12 +34,11 @@ const FriendsView = () => {
     const [isLoading, setIsLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Auto-clear chat notifications when opening a chat
     useEffect(() => {
         if (selectedChat) {
             clearNotificationsByType('FRIEND_MESSAGE', selectedChat);
         }
-    }, [selectedChat, clearNotificationsByType]);
+    }, [selectedChat, notifications, clearNotificationsByType]);
 
     // Simulate loading
     useEffect(() => {
@@ -85,11 +84,11 @@ const FriendsView = () => {
                 sender: currentUser.id,
                 timestamp: Date.now(),
             });
-            // Send notification to the friend
             createNotification(
                 selectedChat,
                 'FRIEND_MESSAGE',
                 `${currentUser.username} sent you a message: "${text.length > 40 ? text.slice(0, 40) + '…' : text}"`,
+                { fromUserId: currentUser.id }
             );
         } catch (e) {
             console.error('Failed to send message:', e);
@@ -228,10 +227,23 @@ const FriendsView = () => {
                                                             className={`p-2 rounded-lg transition-colors ${themeMode === 'dark'
                                                                 ? 'bg-zinc-800 text-zinc-400 hover:bg-rose-500/20 hover:text-rose-400'
                                                                 : 'bg-zinc-100 text-zinc-600 hover:bg-rose-100 hover:text-rose-600'
-                                                                }`}
+                                                                } relative`}
                                                             title="Send message"
                                                         >
                                                             <MessageCircle className="w-4 h-4" />
+                                                            {(() => {
+                                                                const unreadCount = notifications
+                                                                    .filter(n =>
+                                                                        n.type === 'FRIEND_MESSAGE' &&
+                                                                        !n.read &&
+                                                                        (n.data as any)?.fromUserId === friend.id
+                                                                    ).length;
+                                                                return unreadCount > 0 && selectedChat !== friend.id ? (
+                                                                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                                                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                                                    </span>
+                                                                ) : null;
+                                                            })()}
                                                         </button>
                                                         <button
                                                             onClick={(e) => {

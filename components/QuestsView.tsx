@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { QUEST_POOL } from '../constants';
+import { getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { Check, Lock, Zap, Clock, Star, Trophy, Target, Calendar, Sparkles, Flame, Crown, Gem, Rocket, Filter, TrendingUp, User } from 'lucide-react';
@@ -14,12 +15,10 @@ const QuestsView = () => {
     const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'DAILY' | 'MONTHLY' | 'UNIQUE'>('ALL');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Calculate level and XP progress
-    const currentLevel = currentUser.level || 1;
-    const currentXP = currentUser.xp || 0;
-    const xpForNextLevel = currentLevel * 100; // Simple calculation: 100 XP per level
-    const xpProgress = Math.min(100, (currentXP / xpForNextLevel) * 100);
-    const xpNeeded = Math.max(0, xpForNextLevel - currentXP);
+    const totalXP = currentUser.xp || 0;
+    const { level: displayLevel, currentLevelXP, xpForNextLevel } = getLevelProgress(totalXP);
+    const xpProgress = Math.min(100, (currentLevelXP / xpForNextLevel) * 100);
+    const xpNeeded = Math.max(0, xpForNextLevel - currentLevelXP);
 
     // Simulate loading
     React.useEffect(() => {
@@ -175,7 +174,7 @@ const QuestsView = () => {
                                     <User className={`w-8 h-8 ${themeMode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
                                 </div>
                                 <h3 className={`text-2xl font-bold mb-1 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-                                    Level {currentLevel}
+                                    Level {displayLevel}
                                 </h3>
                                 <p className={`text-sm ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}>
                                     Current Rank
@@ -186,7 +185,7 @@ const QuestsView = () => {
                             <div className="text-center">
                                 <div className="mb-3">
                                     <div className={`text-2xl font-bold mb-1 ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
-                                        {currentXP} XP
+                                        {totalXP} XP
                                     </div>
                                     <p className={`text-sm ${themeMode === 'dark' ? 'text-zinc-400' : 'text-zinc-600'}`}>
                                         {xpNeeded} XP to next level
