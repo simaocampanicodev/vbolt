@@ -19,7 +19,7 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
 
   const totalHumanUsers = useMemo(() => allUsers.filter(u => !u.isBot).length, [allUsers]);
   const topPercent = leaderboardPosition && totalHumanUsers > 0
-    ? Math.max(1, Math.round((leaderboardPosition / totalHumanUsers) * 100))
+    ? Math.min(100, Math.max(1, Math.floor(((leaderboardPosition - 1) / totalHumanUsers) * 100) + 1))
     : 100;
 
   const rank = getRankInfo(currentUser.points, leaderboardPosition);
