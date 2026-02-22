@@ -60,7 +60,6 @@ const VIEW_CLEAR_MAP: Record<string, NotificationType[]> = {
     'FRIEND_REQUEST_REJECTED',
     'FRIEND_REMOVED',
     'FRIEND_ADDED',
-    'FRIEND_MESSAGE',
   ],
   suggestions: ['SUGGESTION_LIKED'],
   quests: ['QUEST_READY'],

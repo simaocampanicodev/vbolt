@@ -15,8 +15,6 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
     const [queueElapsed, setQueueElapsed] = useState(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    // Calculate pending friend requests
-    const friendRequestCount = currentUser.friendRequests ? currentUser.friendRequests.length : 0;
     const isInQueue = isAuthenticated && queue.some(u => u.id === currentUser.id);
 
     // Queue time counter
@@ -182,12 +180,6 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                                         {item.label}
                                     </div>
 
-                                    {/* Friend Request Badge (Mobile) */}
-                                    {item.id === 'friends' && friendRequestCount > 0 && (
-                                        <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                            {friendRequestCount}
-                                        </span>
-                                    )}
                                 </button>
                             ))}
                         </nav>
