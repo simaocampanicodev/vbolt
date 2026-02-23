@@ -188,9 +188,9 @@ const Profile = () => {
       id: 'highroller',
       name: 'High Roller',
       icon: <Crown className="w-8 h-8 text-purple-400" />,
-      active: profileUser.points >= 1200,
+      active: profileUser.points >= 1351,
       desc: 'You have reached the elite ranks.',
-      requirement: 'Reach Ascendant rank (1200 MMR) or higher.',
+      requirement: 'Reach Ascendant rank (1351 MMR) or higher.',
       glowColor: 'shadow-purple-400/50 bg-purple-400/10'
     },
     {
