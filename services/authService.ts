@@ -13,6 +13,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../lib/firestore';
+import { REFERRAL_XP_REWARD } from '../constants';
 import { auth } from './firebase'; // ⭐ IMPORTANTE: Importar auth
 import { User, GameRole, UserRole } from '../types';
 
@@ -23,6 +24,7 @@ export interface RegisterData {
   primaryRole: GameRole;
   secondaryRole: GameRole;
   topAgents: string[];
+  referralId?: string;
 }
 
 // ⭐ ATUALIZADO: Usa Firebase UID se disponível
@@ -67,7 +69,7 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
     const userId = generateUserId(firebaseUid);
 
     // Dados do novo usuário
-    const newUserData = {
+    const newUserData: any = {
       email: data.email,
       username: data.username,
       primary_role: data.primaryRole,
@@ -86,6 +88,9 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friend_quest_counted_ids: [],
       created_at: serverTimestamp()
     };
+    if (data.referralId && typeof data.referralId === 'string') {
+      newUserData.referred_by = data.referralId;
+    }
 
     console.log('💾 Salvando usuário no Firestore com ID:', userId);
     
@@ -125,6 +130,24 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friendRequests: userData.friend_requests || [],
       friendQuestCountedIds: userData.friend_quest_counted_ids || []
     };
+
+    // Referral reward
+    try {
+      if (data.referralId && user.id !== data.referralId) {
+        const refRef = doc(db, COLLECTIONS.USERS, data.referralId);
+        const refSnap = await getDoc(refRef);
+        if (refSnap.exists()) {
+          const refData = refSnap.data() || {};
+          const newXp = (refData.xp || 0) + REFERRAL_XP_REWARD;
+          await updateDoc(refRef, {
+            xp: newXp,
+            referral_count: ((refData.referral_count || 0) + 1)
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Referral reward failed or skipped:', e);
+    }
 
     console.log('✅ Usuário criado com sucesso:', user.username);
     return { success: true, user };

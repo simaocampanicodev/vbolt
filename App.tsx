@@ -1,19 +1,20 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import Layout from './components/Layout';
-import Queue from './components/Queue';
-import Profile from './components/Profile';
-import Leaderboard from './components/Leaderboard';
-import MatchInterface from './components/MatchInterface';
-import MatchHistory from './components/MatchHistory';
-import AdminDashboard from './components/AdminDashboard';
-import SuggestionsView from './components/SuggestionsView';
 import Auth from './components/Auth';
-import QuestsView from './components/QuestsView';
-import FriendsView from './components/FriendsView';
 import Home from './components/Home';
 import { ToastContainer } from './components/ui/Toast';
+
+const Queue = React.lazy(() => import('./components/Queue'));
+const Profile = React.lazy(() => import('./components/Profile'));
+const Leaderboard = React.lazy(() => import('./components/Leaderboard'));
+const MatchInterface = React.lazy(() => import('./components/MatchInterface'));
+const MatchHistory = React.lazy(() => import('./components/MatchHistory'));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const SuggestionsView = React.lazy(() => import('./components/SuggestionsView'));
+const QuestsView = React.lazy(() => import('./components/QuestsView'));
+const FriendsView = React.lazy(() => import('./components/FriendsView'));
 
 const AppContent = () => {
   const { matchState, isAuthenticated, viewProfileId, setViewProfileId, toasts, removeToast, themeMode, hasDashboardAccess } = useGame();
@@ -97,7 +98,9 @@ const AppContent = () => {
     <>
       <Layout currentView={currentView} setCurrentView={handleSetCurrentView}>
         <div key={currentView} className="view-transition-enter">
-          {content}
+          <Suspense fallback={<div className="p-6 text-center text-zinc-500 text-sm">Loading…</div>}>
+            {content}
+          </Suspense>
         </div>
       </Layout>
       <ToastContainer

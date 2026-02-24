@@ -113,6 +113,7 @@ export const ROLES: GameRole[] = [
 ];
 
 export const INITIAL_POINTS = 1000;
+export const REFERRAL_XP_REWARD = 500;
 
 export const MATCH_FOUND_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 

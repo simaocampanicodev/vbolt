@@ -9,6 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 
 const Auth = () => {
     const { completeRegistration, themeMode, pendingAuthUser, allUsers } = useGame();
+    const [referrerId, setReferrerId] = useState<string | null>(null);
 
     // Auth Flow State
     const [step, setStep] = useState<'start' | 'registration_details'>('start');
@@ -28,6 +29,18 @@ const Auth = () => {
             }
         }
     }, [pendingAuthUser]);
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        let ref: string | null = params.get('ref');
+        if (!ref || typeof ref !== 'string') {
+            try {
+                const path = window.location.pathname || '';
+                const m = path.match(/^\/invite\/([^\/]+)/);
+                if (m && m[1]) ref = m[1];
+            } catch {}
+        }
+        if (ref && typeof ref === 'string') setReferrerId(ref);
+    }, []);
 
     const handleAgentToggle = (agent: string) => {
         if (regAgents.includes(agent)) {
@@ -83,7 +96,8 @@ const Auth = () => {
             username: regUsername,
             primaryRole: regPrimary,
             secondaryRole: regSecondary,
-            topAgents: regAgents
+            topAgents: regAgents,
+            referralId: referrerId || undefined
         });
     };
 
