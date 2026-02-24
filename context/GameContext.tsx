@@ -2278,7 +2278,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     );
 
     // Verificar consenso no servidor
-    const REQUIRED_VOTES = 3;
+    const REQUIRED_VOTES = 6;
     let consensusResult: {
       scoreA: number;
       scoreB: number;
@@ -2316,11 +2316,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       });
       return {
         success: true,
-        message: "Match finalized! Result verified by 3+ players.",
+        message: "Match finalized! Result verified by 6+ players.",
       };
     }
 
-    const needMore = Math.max(0, REQUIRED_VOTES - latestReports.length);
+    const leadingVotes = Math.max(0, ...Array.from(resultCounts.values()).map(v => v.count));
+    const needMore = Math.max(0, REQUIRED_VOTES - leadingVotes);
     console.log(`⏳ Aguardando mais ${needMore} report(s)`);
     return {
       success: true,

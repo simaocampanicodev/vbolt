@@ -922,7 +922,7 @@ const MatchInterface = () => {
                                                             Waiting for other players to report...
                                                         </p>
                                                         <p className="text-xs text-rose-500 font-bold mt-2">
-                                                            {(matchState.playerReports || []).length} / 3 players voted
+                                                            {(matchState.playerReports || []).length} / 6 players voted
                                                         </p>
                                                     </div>
                                                 </div>
@@ -968,9 +968,9 @@ const MatchInterface = () => {
                                                                 <p className="text-xs text-rose-500 font-bold">
                                                                     Leading Result: {leadingResult[0]} ({maxVotes} votes)
                                                                 </p>
-                                                                {maxVotes < 3 && (
+                                                                {maxVotes < 6 && (
                                                                     <p className="text-xs text-zinc-500 mt-1">
-                                                                        Need {3 - maxVotes} more vote{3 - maxVotes > 1 ? 's' : ''} to confirm
+                                                                        Need {6 - maxVotes} more vote{6 - maxVotes > 1 ? 's' : ''} to confirm
                                                                     </p>
                                                                 )}
                                                             </div>
