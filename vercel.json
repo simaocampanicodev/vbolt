@@ -8,6 +8,13 @@
       }
     }
   ],
+  "functions": {
+    "api/referral-award.ts": {
+      "runtime": "nodejs18.x",
+      "memory": 128,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",

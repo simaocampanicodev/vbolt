@@ -131,22 +131,17 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friendQuestCountedIds: userData.friend_quest_counted_ids || []
     };
 
-    // Referral reward
+    // Referral reward via Vercel serverless API (no Firebase Functions required)
     try {
       if (data.referralId && user.id !== data.referralId) {
-        const refRef = doc(db, COLLECTIONS.USERS, data.referralId);
-        const refSnap = await getDoc(refRef);
-        if (refSnap.exists()) {
-          const refData = refSnap.data() || {};
-          const newXp = (refData.xp || 0) + REFERRAL_XP_REWARD;
-          await updateDoc(refRef, {
-            xp: newXp,
-            referral_count: ((refData.referral_count || 0) + 1)
-          });
-        }
+        await fetch('/api/referral-award', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referrerId: data.referralId, newUserId: user.id })
+        });
       }
     } catch (e) {
-      console.warn('Referral reward failed or skipped:', e);
+      console.warn('Referral reward API call failed or skipped:', e);
     }
 
     console.log('✅ Usuário criado com sucesso:', user.username);
