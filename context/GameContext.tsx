@@ -32,6 +32,7 @@ import {
   INITIAL_POINTS,
   MAPS,
   MATCH_FOUND_SOUND,
+  READY_CHECK_SOUND,
   QUEST_POOL,
 } from "../constants";
 import {
@@ -333,6 +334,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   const currentMatchIdRef = useRef<string | null>(null);
   const matchesBeingCreatedRef = useRef<Set<string>>(new Set()); // ⭐ Rastrear matches em processamento
   const lastAppliedPointsMatchIdRef = useRef<string | null>(null); // ⭐ Evitar aplicar pontos duas vezes à mesma partida
+  const lastProcessedQuestsMatchIdRef = useRef<string | null>(null); // ⭐ Evitar duplicar progresso de missões por match
   const isAdmin = currentUser.username === "txger.";
   const hasDashboardAccess =
     currentUser.username === "txger." ||
@@ -596,6 +598,37 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     matchState?.playerPointsChanges,
   ]);
 
+  // ⭐ Atualizar progresso das missões no cliente ao finalizar a match (sem backend)
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser.id || currentUser.id === "user-1")
+      return;
+    if (
+      !matchState ||
+      matchState.phase !== MatchPhase.FINISHED ||
+      !matchState.playerPointsChanges?.length
+    )
+      return;
+    if (lastProcessedQuestsMatchIdRef.current === matchState.id) return;
+
+    const myChange = matchState.playerPointsChanges.find(
+      (p: { playerId: string; isWinner: boolean }) => p.playerId === currentUser.id,
+    );
+    if (!myChange) return;
+
+    // Sempre contar jogo jogado
+    processQuestProgress("PLAY_MATCHES", 1);
+    // Contar vitórias para vencedores
+    if (myChange.isWinner) {
+      processQuestProgress("WIN_MATCHES", 1);
+    }
+    lastProcessedQuestsMatchIdRef.current = matchState.id;
+  }, [
+    isAuthenticated,
+    currentUser.id,
+    matchState?.id,
+    matchState?.phase,
+    matchState?.playerPointsChanges,
+  ]);
   // 🔥 LISTENER: Active Match
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -894,8 +927,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     if (matchState?.phase === MatchPhase.READY_CHECK && !soundPlayedRef.current[matchState.id]) {
       try {
         console.log("🔊 Tocando som de match encontrada...");
-        const audio = new Audio(MATCH_FOUND_SOUND);
-        audio.volume = 0.5;
+        const audio = new Audio(READY_CHECK_SOUND);
+        audio.volume = 0.2;
         audio.play().catch((e) => console.log("⚠️ Navegador bloqueou som:", e));
         soundPlayedRef.current[matchState.id] = true;
       } catch (e) {
@@ -1409,6 +1442,15 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       reportB: scoreResult,
     });
     console.log("✅ Match finalizada e enviando para todos os jogadores");
+    try {
+      await fetch('/api/process-match-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: matchState.id })
+      });
+    } catch (e) {
+      console.warn('process-match-result call failed:', e);
+    }
     // Pontos: cada jogador aplica os próprios no Firestore via useEffect (sem Cloud Functions)
 
     // ⭐ Atualizar estado local imediatamente para refletir mudanças de pontos
