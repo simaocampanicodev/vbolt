@@ -4,9 +4,6 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const db = admin.firestore();
 
-// Referral reward amount (XP)
-const REFERRAL_XP_REWARD = 500;
-
 /**
  * Shared logic: apply playerPointsChanges to users and mark match as processed.
  * Used by both the Firestore trigger and the callable (so points are applied even if trigger is not deployed).
@@ -119,44 +116,3 @@ exports.processMatchResult = functions.https.onCall(async (data, context) => {
   await applyPointsToUsers(matchId, matchRef, changes);
   return { ok: true, message: 'Points applied' };
 });
-
-/**
- * Cloud Function: awardReferralOnUserCreate (trigger)
- * Trigger: onCreate users/{userId}
- * When a user document is created and contains `referred_by`, award XP to the referrer.
- */
-exports.awardReferralOnUserCreate = functions.firestore
-  .document('users/{userId}')
-  .onCreate(async (snap, context) => {
-    try {
-      const newUser = snap.data() || {};
-      const userId = context.params.userId;
-      const referrerId = newUser.referred_by;
-      if (!referrerId || typeof referrerId !== 'string') {
-        console.log(`User ${userId} created without referral.`);
-        return null;
-      }
-      if (referrerId === userId) {
-        console.warn(`User ${userId} referred themselves — skipping reward.`);
-        return null;
-      }
-      const refRef = db.doc(`users/${referrerId}`);
-      const refSnap = await refRef.get();
-      if (!refSnap.exists) {
-        console.warn(`Referrer ${referrerId} not found — skipping reward.`);
-        return null;
-      }
-      const refData = refSnap.data() || {};
-      const currentXp = typeof refData.xp === 'number' ? refData.xp : 0;
-      const currentCount = typeof refData.referral_count === 'number' ? refData.referral_count : 0;
-      await refRef.update({
-        xp: currentXp + REFERRAL_XP_REWARD,
-        referral_count: currentCount + 1,
-      });
-      console.log(`Awarded ${REFERRAL_XP_REWARD} XP to referrer ${referrerId} for new user ${userId}.`);
-      return null;
-    } catch (err) {
-      console.error('Error awarding referral XP:', err);
-      throw err;
-    }
-  });

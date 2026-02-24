@@ -8,7 +8,7 @@ import { MatchRecord, Quest } from '../types';
 import { QUEST_POOL } from '../constants';
 
 const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: string) => void }) => {
-  const { currentUser, allUsers, matchHistory, themeMode, showToast } = useGame();
+  const { currentUser, allUsers, matchHistory, themeMode } = useGame();
 
   // Calculated properties
   const leaderboardPosition = useMemo(() => {
@@ -32,19 +32,6 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
 
   const totalGames = currentUser.wins + currentUser.losses;
   const winrate = totalGames > 0 ? ((currentUser.wins / totalGames) * 100).toFixed(1) : "0.0";
-  const referralLink = React.useMemo(() => {
-    try {
-      return `${window.location.origin}/invite/${currentUser.id}`;
-    } catch {
-      return `/invite/${currentUser.id}`;
-    }
-  }, [currentUser.id]);
-  const copyReferral = React.useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(referralLink);
-      showToast('Link copied', 'success');
-    } catch {}
-  }, [referralLink, showToast]);
 
   // User matches for calculating form and best map
   const userMatches = useMemo(() => {
@@ -198,17 +185,6 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
               </div>
               <div className={`text-3xl font-display font-bold ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>
                 {winrate}%
-              </div>
-            </div>
-            <div className={`p-4 rounded-2xl border ${themeMode === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-zinc-50 border-zinc-100'}`}>
-              <div className="flex justify-between items-center text-xs text-zinc-500 font-medium uppercase tracking-wider mb-2">
-                <span>Referral Link</span>
-                <button onClick={copyReferral} className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-rose-500/30 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20">
-                  Copy
-                </button>
-              </div>
-              <div className={`text-xs break-all ${themeMode === 'dark' ? 'text-white/70' : 'text-black/70'}`}>
-                {referralLink}
               </div>
             </div>
           </div>

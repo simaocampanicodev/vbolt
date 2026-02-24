@@ -13,7 +13,6 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../lib/firestore';
-import { REFERRAL_XP_REWARD } from '../constants';
 import { auth } from './firebase'; // ⭐ IMPORTANTE: Importar auth
 import { User, GameRole, UserRole } from '../types';
 
@@ -24,7 +23,6 @@ export interface RegisterData {
   primaryRole: GameRole;
   secondaryRole: GameRole;
   topAgents: string[];
-  referralId?: string;
 }
 
 // ⭐ ATUALIZADO: Usa Firebase UID se disponível
@@ -69,7 +67,7 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
     const userId = generateUserId(firebaseUid);
 
     // Dados do novo usuário
-    const newUserData: any = {
+    const newUserData = {
       email: data.email,
       username: data.username,
       primary_role: data.primaryRole,
@@ -88,9 +86,6 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friend_quest_counted_ids: [],
       created_at: serverTimestamp()
     };
-    if (data.referralId && typeof data.referralId === 'string') {
-      newUserData.referred_by = data.referralId;
-    }
 
     console.log('💾 Salvando usuário no Firestore com ID:', userId);
     
@@ -130,19 +125,6 @@ export const registerUser = async (data: RegisterData): Promise<{ success: boole
       friendRequests: userData.friend_requests || [],
       friendQuestCountedIds: userData.friend_quest_counted_ids || []
     };
-
-    // Referral reward via Vercel serverless API (no Firebase Functions required)
-    try {
-      if (data.referralId && user.id !== data.referralId) {
-        await fetch('/api/referral-award', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ referrerId: data.referralId, newUserId: user.id })
-        });
-      }
-    } catch (e) {
-      console.warn('Referral reward API call failed or skipped:', e);
-    }
 
     console.log('✅ Usuário criado com sucesso:', user.username);
     return { success: true, user };

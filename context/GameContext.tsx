@@ -82,7 +82,6 @@ interface RegisterData {
   primaryRole: GameRole;
   secondaryRole: GameRole;
   topAgents: string[];
-  referralId?: string;
 }
 
 export interface GameContextType {
@@ -1745,7 +1744,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       primaryRole: data.primaryRole,
       secondaryRole: data.secondaryRole,
       topAgents: data.topAgents,
-      referralId: data.referralId,
     });
     if (result.success && result.user) {
       setCurrentUser(result.user);

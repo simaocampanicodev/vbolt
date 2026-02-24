@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 import { Home, BarChart2, LogOut, History, Moon, Sun, Menu, X, LayoutDashboard, Target, Users, Lightbulb, Swords } from 'lucide-react';
 import Button from './ui/Button';
 import NotificationBell from './NotificationBell';
-const ChatBubbleOverlay = React.lazy(() => import('./ChatBubbleOverlay'));
+import ChatBubbleOverlay from './ChatBubbleOverlay';
 
 interface LayoutProps {
     currentView: string;
@@ -235,9 +235,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
 
             {/* Global Chat Bubble Overlay */}
             {isAuthenticated && (!matchState || matchState.phase === 'QUEUE') && (
-                <React.Suspense fallback={null}>
-                    <ChatBubbleOverlay />
-                </React.Suspense>
+                <ChatBubbleOverlay />
             )}
 
         </div>
