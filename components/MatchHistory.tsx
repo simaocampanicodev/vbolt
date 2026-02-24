@@ -282,7 +282,7 @@ const MatchDetailModal: React.FC<MatchDetailProps> = ({ match, currentUserId, th
 /* ─────────────────────── Main Component ──────────────────────── */
 
 const MatchHistory = ({ initialMatchId, onMatchOpened }: { initialMatchId?: string | null; onMatchOpened?: () => void }) => {
-    const { matchHistory, currentUser, themeMode } = useGame();
+    const { matchHistory, currentUser, themeMode, enableMatchHistory } = useGame();
     const [filter, setFilter] = useState<'all' | 'mine'>('mine');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
@@ -292,6 +292,10 @@ const MatchHistory = ({ initialMatchId, onMatchOpened }: { initialMatchId?: stri
         const timer = setTimeout(() => setIsLoading(false), 800);
         return () => clearTimeout(timer);
     }, []);
+    useEffect(() => {
+        enableMatchHistory(true);
+        return () => enableMatchHistory(false);
+    }, [enableMatchHistory]);
 
     // Auto-open match detail when navigated from Home's Last Match card
     useEffect(() => {
@@ -442,7 +446,7 @@ const MatchHistory = ({ initialMatchId, onMatchOpened }: { initialMatchId?: stri
                                 <div className="flex items-center gap-4 p-4 md:p-5">
                                     {/* Map Thumbnail */}
                                     <div className="relative w-16 h-16 md:w-20 md:h-14 rounded-xl overflow-hidden shrink-0">
-                                        <img src={mapImg} alt={match.map} className="w-full h-full object-cover" />
+                                        <img src={mapImg} alt={match.map} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/30"></div>
                                     </div>
 

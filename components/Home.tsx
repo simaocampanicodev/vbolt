@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { getRankInfo, getLevelProgress } from '../services/gameService';
 import Card from './ui/Card';
@@ -6,6 +6,8 @@ import Button from './ui/Button';
 import { Play, Trophy, Target, TrendingUp, History, Map as MapIcon, ChevronRight, UserPlus } from 'lucide-react';
 import { MatchRecord, Quest } from '../types';
 import { QUEST_POOL } from '../constants';
+import { db } from '../lib/firestore';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
 const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: string) => void }) => {
   const { currentUser, allUsers, matchHistory, themeMode } = useGame();
@@ -55,7 +57,42 @@ const Home = ({ setCurrentView }: { setCurrentView: (view: string, matchId?: str
     return { name: sorted[0][0], wr: (sorted[0][1].wins / sorted[0][1].played) * 100 };
   }, [userMatches, currentUser.id]);
 
-  const lastMatch = userMatches[0];
+  const [lastMatch, setLastMatch] = useState<MatchRecord | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const qA = query(collection(db, 'matches'), where('teamAIds', 'array-contains', currentUser.id), orderBy('match_date', 'desc'), limit(1));
+        const qB = query(collection(db, 'matches'), where('teamBIds', 'array-contains', currentUser.id), orderBy('match_date', 'desc'), limit(1));
+        const [aSnap, bSnap] = await Promise.all([getDocs(qA), getDocs(qB)]);
+        const aDoc = aSnap.docs[0];
+        const bDoc = bSnap.docs[0];
+        const pick = (doc: any): MatchRecord | null => {
+          if (!doc) return null;
+          const d = doc.data();
+          return {
+            id: doc.id,
+            date: d.date ?? d.match_date?.toMillis?.() ?? Date.now(),
+            map: d.map ?? 'Ascent',
+            captainA: d.captainA ?? '',
+            captainB: d.captainB ?? '',
+            winner: d.winner ?? 'A',
+            teamAIds: Array.isArray(d.teamAIds) ? d.teamAIds : d.team_a_ids || [],
+            teamBIds: Array.isArray(d.teamBIds) ? d.teamBIds : d.team_b_ids || [],
+            teamASnapshot: Array.isArray(d.teamASnapshot) ? d.teamASnapshot : d.team_a_snapshot || [],
+            teamBSnapshot: Array.isArray(d.teamBSnapshot) ? d.teamBSnapshot : d.team_b_snapshot || [],
+            score: d.score ?? '0-0',
+          };
+        };
+        const a = pick(aDoc);
+        const b = pick(bDoc);
+        const latest = [a, b].filter(Boolean).sort((x: any, y: any) => (y!.date - x!.date))[0] as MatchRecord | undefined;
+        if (!cancelled) setLastMatch(latest);
+      } catch {}
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [currentUser.id]);
   const lastMatchWon = lastMatch ? lastMatch.winner === ((lastMatch.teamAIds || []).includes(currentUser.id) ? 'A' : 'B') : false;
 
   // Active user quests

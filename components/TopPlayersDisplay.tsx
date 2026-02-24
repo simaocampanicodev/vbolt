@@ -74,7 +74,7 @@ const TopPlayerCard: React.FC<TopPlayerCardProps> = ({ user, position, themeMode
           position === 1 ? 'w-20 h-20' : position === 2 ? 'w-16 h-16' : 'w-14 h-14'
         } rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/30`}>
           {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+            <img src={user.avatarUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           ) : (
             <span className={`${
               position === 1 ? 'text-3xl' : position === 2 ? 'text-2xl' : 'text-xl'

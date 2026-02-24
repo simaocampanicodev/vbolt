@@ -209,7 +209,7 @@ const ChatBubbleOverlay: React.FC = () => {
                       className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors border-b last:border-0 ${dark ? 'border-zinc-800' : 'border-black/10'} ${dark ? 'hover:bg-rose-500/10' : 'hover:bg-rose-500/10'}`}
                     >
                       <div className={`w-9 h-9 rounded-full overflow-hidden bg-zinc-200 text-black ring-2 ring-rose-500/30`}>
-                        {friend.avatarUrl ? <img src={friend.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px]">{friend.username[0].toUpperCase()}</div>}
+                        {friend.avatarUrl ? <img src={friend.avatarUrl} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[11px]">{friend.username[0].toUpperCase()}</div>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ const ChatBubbleOverlay: React.FC = () => {
                   <div className={`w-7 h-7 rounded-full overflow-hidden bg-white text-black border border-white/20`}>
                     {(() => {
                       const f = allUsers.find(u => u.id === selectedChat);
-                      return f?.avatarUrl ? <img src={f.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px]">{f?.username?.[0]?.toUpperCase() || '?'}</div>;
+                      return f?.avatarUrl ? <img src={f.avatarUrl} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px]">{f?.username?.[0]?.toUpperCase() || '?'}</div>;
                     })()}
                   </div>
                   <span className="text-sm font-bold text-white">{allUsers.find(u => u.id === selectedChat)?.username}</span>

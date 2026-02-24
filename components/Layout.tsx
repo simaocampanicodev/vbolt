@@ -138,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }
                             >
                                 <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/10 text-white">
                                     {currentUser.avatarUrl ? (
-                                        <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                        <img src={currentUser.avatarUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                     ) : (
                                         <span className="text-xs font-bold">{currentUser.username[0].toUpperCase()}</span>
                                     )}

@@ -227,7 +227,7 @@ const FriendsView = () => {
                                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs overflow-hidden ${themeMode === 'dark' ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-zinc-700'
                                                                 }`}>
                                                                 {sender.avatarUrl ?
-                                                                    <img src={sender.avatarUrl} className="w-full h-full object-cover" /> :
+                                                                    <img src={sender.avatarUrl} loading="lazy" decoding="async" className="w-full h-full object-cover" /> :
                                                                     sender.username[0].toUpperCase()
                                                                 }
                                                             </div>

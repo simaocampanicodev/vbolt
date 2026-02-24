@@ -34,7 +34,7 @@ interface BadgeType {
 }
 
 const Profile = () => {
-  const { currentUser, updateProfile, themeMode, allUsers, viewProfileId, isAdmin, resetSeason, matchHistory, linkRiotAccount, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, showToast, onlineUserIds } = useGame();
+  const { currentUser, updateProfile, themeMode, allUsers, viewProfileId, isAdmin, resetSeason, matchHistory, linkRiotAccount, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, showToast, onlineUserIds, enableMatchHistory } = useGame();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,6 +123,11 @@ const Profile = () => {
   const { level: calculatedLevel, currentLevelXP, xpForNextLevel } = getLevelProgress(profileUser.xp || 0);
   const displayLevel = profileUser.level || calculatedLevel; // Fallback or sync
   const xpPercent = (currentLevelXP / xpForNextLevel) * 100;
+
+  useEffect(() => {
+    enableMatchHistory(true);
+    return () => enableMatchHistory(false);
+  }, [enableMatchHistory]);
 
   // --- STATS CALCULATION ---
   const userMatches = useMemo(() => {
@@ -862,7 +867,7 @@ const Profile = () => {
             <div className="relative group">
               <div className={`w-24 h-24 md:w-28 md:h-28 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center ${themeMode === 'dark' ? 'bg-zinc-800 border-4 border-black/50' : 'bg-zinc-200 border-4 border-white'}`}>
                 {profileUser.avatarUrl ? (
-                  <img src={profileUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={profileUser.avatarUrl} alt="avatar" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-4xl font-display font-bold text-white/20">{profileUser.username.substring(0, 2).toUpperCase()}</span>
                 )}
@@ -1172,7 +1177,7 @@ const Profile = () => {
                 <div className="grid grid-cols-1 gap-3">
                   {profileUser.topAgents.map((agent, index) => (
                     <div key={agent} className={`relative overflow-hidden rounded-xl border p-3 flex items-center transition-all ${themeMode === 'dark' ? 'border-white/5 bg-white/5 hover:bg-white/10' : 'border-black/5 bg-black/5 hover:bg-black/10'}`}>
-                      <img src={AGENT_IMAGES[agent]} alt={agent} className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 object-cover mr-4" />
+                      <img src={AGENT_IMAGES[agent]} alt={agent} loading="lazy" decoding="async" className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 object-cover mr-4" />
                       <div>
                         <span className={`block text-sm font-bold ${themeMode === 'dark' ? 'text-white' : 'text-zinc-900'}`}>{agent}</span>
                         <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{index === 0 ? 'Main' : 'Pick'}</span>
@@ -1194,7 +1199,7 @@ const Profile = () => {
                             : `border-transparent ${themeMode === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
                                     `}
                       >
-                        <img src={AGENT_IMAGES[agent]} alt={agent} className="w-8 h-8 rounded-full mb-1" />
+                        <img src={AGENT_IMAGES[agent]} alt={agent} loading="lazy" decoding="async" className="w-8 h-8 rounded-full mb-1" />
                         <span className={`text-[9px] font-bold ${editTopAgents.includes(agent) ? 'text-rose-400' : 'text-zinc-500'}`}>{agent}</span>
                       </button>
                     ))}

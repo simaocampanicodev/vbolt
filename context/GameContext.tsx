@@ -114,6 +114,7 @@ export interface GameContextType {
   ) => Promise<{ success: boolean; message?: string }>;
   sendChatMessage: (text: string) => Promise<void>;
   matchHistory: MatchRecord[];
+  enableMatchHistory: (enabled: boolean) => void;
   allUsers: User[];
   reports: Report[];
   submitReport: (targetUserId: string, reason: string) => void;
@@ -238,6 +239,7 @@ export const GameContext = React.createContext<GameContextType>({
   clearAllNotifications: async () => { },
   clearNotificationsByType: async () => { },
   createNotification: async () => { },
+  enableMatchHistory: () => { },
 });
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({
@@ -253,6 +255,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchRecord[]>([]);
+  const [matchHistoryEnabled, setMatchHistoryEnabled] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [themeMode] = useState<ThemeMode>("dark");
   const [viewProfileId, setViewProfileId] = useState<string | null>(null);
@@ -832,6 +835,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   // 🔥 LISTENER: Match History (histórico de partidas para MatchHistory e Profile)
   useEffect(() => {
+    if (!matchHistoryEnabled) return;
     const q = query(
       collection(db, COLLECTIONS.MATCHES),
       orderBy("match_date", "desc"),
@@ -865,7 +869,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       setMatchHistory(records);
     });
     return () => unsubscribe();
-  }, []);
+  }, [matchHistoryEnabled]);
 
   // ⭐ AUTO-REMOVE DA QUEUE AO SAIR
   useEffect(() => {
@@ -2854,6 +2858,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         clearAllNotifications,
         clearNotificationsByType,
         createNotification,
+      enableMatchHistory: (enabled: boolean) => setMatchHistoryEnabled(enabled),
       }}
     >
       {children}
