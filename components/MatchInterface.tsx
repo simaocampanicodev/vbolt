@@ -367,11 +367,11 @@ const MatchInterface = () => {
                             </div>
 
                             {/* Main Grid: Fixed Height, 3 Columns */}
-                            <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden p-1">
+                            <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden px-3 py-1">
 
                                 {/* Team A (Left) */}
-                                <Card className="col-span-2 h-full flex flex-col border-l-4 border-l-emerald-500/50" noPadding>
-                                    <div className="p-4 border-b border-white/5 bg-emerald-500/5">
+                                <Card className="col-span-2 h-full flex flex-col border-l-4 border-l-emerald-500/50 rounded-xl overflow-hidden z-0" noPadding>
+                                    <div className="p-4 border-b border-white/5 bg-emerald-500/5 rounded-t-xl">
                                         <h3 className="text-emerald-400 font-display font-bold uppercase tracking-widest text-xs truncate">Team {matchState.captainA?.username}</h3>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
@@ -399,18 +399,18 @@ const MatchInterface = () => {
                                                 <span className="text-xs uppercase text-zinc-500 tracking-widest">Available Players</span>
                                                 <span className="text-xs font-mono text-zinc-500">{matchState.remainingPool.length} Remaining</span>
                                             </div>
-                                            <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar p-2">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-full overflow-visible">
+                                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-full overflow-y-auto">
                                                     {matchState.remainingPool.map(player => (
                                                         <div
                                                             key={player.id}
                                                             onClick={() => isMyTurn && draftPlayer(player)}
                                                             className={`
-                                                        relative group transition-all duration-300 cursor-pointer
+                                                        relative group transition-all duration-300 cursor-pointer hover:z-20
                                                         ${isMyTurn
                                                                     ? 'bg-gradient-to-r from-rose-500/5 via-transparent to-purple-500/5 border border-rose-500/10 hover:border-rose-500/30 hover:scale-[1.01] hover:shadow-lg hover:shadow-rose-500/5'
                                                                     : `opacity-30 cursor-not-allowed ${themeMode === 'dark' ? 'bg-black/10 border-white/5' : 'bg-black/5 border-black/5'}`}
-                                                        rounded-xl p-3 overflow-hidden hover:z-[50]
+                                                        rounded-xl p-3 overflow-hidden
                                                     `}
                                                         >
                                                             {/* Background Pattern */}
@@ -496,8 +496,8 @@ const MatchInterface = () => {
                                 </div>
 
                                 {/* Team B (Right) */}
-                                <Card className="col-span-2 h-full flex flex-col border-r-4 border-r-rose-500/50" noPadding>
-                                    <div className="p-4 border-b border-white/5 bg-rose-500/5 text-right">
+                                <Card className="col-span-2 h-full flex flex-col border-r-4 border-r-rose-500/50 rounded-xl overflow-hidden z-0" noPadding>
+                                    <div className="p-4 border-b border-white/5 bg-rose-500/5 text-right rounded-t-xl">
                                         <h3 className="text-rose-400 font-display font-bold uppercase tracking-widest text-xs truncate">Team {matchState.captainB?.username}</h3>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
@@ -561,10 +561,10 @@ const MatchInterface = () => {
                                                     key={map}
                                                     className={`
                                                 relative group transition-all duration-300 ease-out
-                                                ${isBanned
+                                                    ${isBanned
                                                             ? 'opacity-60 cursor-not-allowed'
                                                             : isWinning
-                                                                ? 'ring-2 ring-emerald-500 animate-pulse scale-105 shadow-lg shadow-emerald-500/20'
+                                                                ? 'scale-105 shadow-lg shadow-emerald-500/20 animate-pulse'
                                                                 : isMyTurn && isRemaining
                                                                     ? 'hover:scale-x-110 hover:scale-y-105 hover:z-[40] cursor-pointer hover:shadow-xl hover:shadow-rose-500/10'
                                                                     : 'opacity-70'}
@@ -576,7 +576,7 @@ const MatchInterface = () => {
                                                 ${isBanned
                                                             ? 'border-white/10 bg-black/30'
                                                             : isWinning
-                                                                ? 'border-transparent bg-emerald-950/20'
+                                                                ? 'border-emerald-500 bg-emerald-950/20'
                                                                 : 'border-white/20 bg-white/5 hover:border-rose-500 hover:bg-rose-500/10'}
                                             `}>
                                                         {/* Map Image */}

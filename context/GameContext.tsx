@@ -59,7 +59,6 @@ import {
   serverTimestamp,
   Timestamp,
   arrayUnion,
-  documentId,
 } from "firebase/firestore";
 import { db } from "../lib/firestore";
 import {
@@ -362,22 +361,18 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     allUsersRef.current = allUsers;
   }, [allUsers]);
 
-  const ensureUsersLoaded = useCallback(async (ids: string[]) => {
-    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
-    const missing = uniqueIds.filter(
-      (id) => !allUsersRef.current.find((u) => u.id === id) && !botUsersRef.current.find((u) => u.id === id),
+  // 🔥 LISTENER: All Users
+  useEffect(() => {
+    console.log("🔥 Listener de usuários iniciado");
+    const q = query(
+      collection(db, COLLECTIONS.USERS),
+      orderBy("points", "desc"),
     );
-    if (missing.length === 0) return;
-    const chunks: string[][] = [];
-    for (let i = 0; i < missing.length; i += 10) chunks.push(missing.slice(i, i + 10));
-    const loaded: User[] = [];
-    for (const chunk of chunks) {
-      const q = query(collection(db, COLLECTIONS.USERS), where(documentId(), "in", chunk));
-      const snap = await getDocs(q);
-      snap.forEach((docSnap) => {
-        const d = docSnap.data() as any;
-        loaded.push({
-          id: docSnap.id,
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const users: any[] = snapshot.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
           username: d.username,
           email: d.email,
           points: d.points || INITIAL_POINTS,
@@ -413,23 +408,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
               ? d.created_at.toMillis()
               : d.created_at
             : null,
-        });
+        };
       });
-    }
-    if (loaded.length > 0) {
-      setAllUsers((prev) => {
-        const map = new Map<string, User>();
-        [...(prev || []), ...loaded].forEach((u) => map.set(u.id, u));
-        return Array.from(map.values());
-      });
-    }
+      // Preserve bots (they exist only in queue/match, not in Firestore USERS) so they don't disappear
+      setAllUsers((prev) => [...users, ...(prev || []).filter((u) => u.isBot)]);
+      console.log(`✅ ${users.length} usuários (Firestore) + bots preservados`);
+    });
+    return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated || !currentUser.id) return;
-    const ids = currentUser.friends || [];
-    if (ids.length > 0) ensureUsersLoaded(ids);
-  }, [isAuthenticated, currentUser.id, JSON.stringify(currentUser.friends)]);
 
   // 🔥 LISTENER: Queue (SEMPRE VISÍVEL)
   useEffect(() => {
@@ -456,10 +442,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
           }
         });
         setQueueJoinedAt(currentUserJoinedAt);
-
-        (async () => {
-          await ensureUsersLoaded(queueUserIds);
-        })();
 
         const resolveUser = (id: string) =>
           allUsersRef.current.find((u) => u.id === id) ||
@@ -824,7 +806,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   // 🔥 LISTENER: Tickets (support + suggestions for admin dashboard)
   useEffect(() => {
-    if (!hasDashboardAccess) return;
     const q = query(
       collection(db, COLLECTIONS.TICKETS),
       orderBy("timestamp", "desc"),
@@ -852,7 +833,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       setTickets(list);
     });
     return () => unsubscribe();
-  }, [hasDashboardAccess]);
+  }, []);
 
   // 🔥 LISTENER: Match History (histórico de partidas para MatchHistory e Profile)
   useEffect(() => {
