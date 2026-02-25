@@ -37,6 +37,7 @@ const MatchInterface = () => {
     const [showCreatingMatch, setShowCreatingMatch] = useState(false);
     const [showWinningMapPhase, setShowWinningMapPhase] = useState<'none' | 'highlight' | 'creating'>('none');
     const [readyProgress, setReadyProgress] = useState(0);
+    const [localMvpVoted, setLocalMvpVoted] = useState(false);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -76,6 +77,7 @@ const MatchInterface = () => {
     const isMyTurn = (matchState.turn === 'A' && matchState.captainA?.id === currentUser.id) ||
         (matchState.turn === 'B' && matchState.captainB?.id === currentUser.id);
     const isFinished = matchState?.phase === MatchPhase.FINISHED;
+    const showFinishedView = isFinished || (matchState?.phase === MatchPhase.MVP_VOTE && localMvpVoted);
 
     const formatTime = (ms: number) => {
         const minutes = Math.floor(ms / 60000);
@@ -1049,7 +1051,7 @@ const MatchInterface = () => {
                     )}
 
                     {/* --- PHASE: FINISHED (SCROLLABLE) --- */}
-                    {isFinished && matchState && (
+                    {showFinishedView && matchState && (
                         <div className="h-full overflow-y-auto custom-scrollbar flex flex-col items-center space-y-12 animate-in zoom-in duration-500 pt-12 pb-24 w-full">
                             <div className="text-center">
                                 <Trophy className={`w-24 h-24 mx-auto ${matchState.winner === userTeam ? 'text-emerald-500' : 'text-rose-500'}`} />
@@ -1195,31 +1197,10 @@ const MatchInterface = () => {
 
                     {/* --- PHASE: MVP VOTE --- */}
                     {matchState.phase === MatchPhase.MVP_VOTE && (() => {
-                        const hasVotedMVP = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
+                        const hasVotedInState = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
+                        const hasVotedMVP = localMvpVoted || hasVotedInState;
                         if (hasVotedMVP) {
-                            return (
-                                <div className="h-full flex flex-col items-center space-y-12 animate-in zoom-in duration-500 pt-12 pb-24 w-full">
-                                    <div className="text-center">
-                                        <Trophy className={`w-24 h-24 mx-auto ${matchState.winner === userTeam ? 'text-emerald-500' : 'text-rose-500'}`} />
-                                        <h1 className={`text-8xl font-display font-bold mt-6 mb-4 tracking-tighter ${resultColor}`}>{resultTitle}</h1>
-                                        {(() => {
-                                            const myChange = matchState.playerPointsChanges?.find(p => p.playerId === currentUser.id);
-                                            const pointsChange = myChange?.pointsChange ?? currentUser.lastPointsChange;
-                                            if (pointsChange === undefined) return null;
-                                            return (
-                                                <div className={`text-2xl font-bold font-mono mb-4 ${pointsChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                    {pointsChange >= 0 ? '+' : ''}{pointsChange} MMR
-                                                </div>
-                                            );
-                                        })()}
-                                        <p className="text-sm text-zinc-400 font-bold tracking-widest">WINNER: TEAM {matchState.winner === 'A' ? matchState.captainA?.username.toUpperCase() : matchState.captainB?.username.toUpperCase()}</p>
-                                        <div className="mt-4 text-4xl font-mono font-bold text-white bg-white/5 px-6 py-3 rounded-3xl border border-white/10 inline-block">
-                                            {matchState.reportA ? `${matchState.reportA.scoreA} - ${matchState.reportA.scoreB}` : ''}
-                                        </div>
-                                        <div className="mt-6 text-xs text-zinc-500 uppercase tracking-widest">Waiting for MVP votes to be completed…</div>
-                                    </div>
-                                </div>
-                            );
+                            return null;
                         }
                         return (
                         <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-500">
@@ -1230,7 +1211,7 @@ const MatchInterface = () => {
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 place-items-stretch">
                                     {matchState.players.map(p => {
-                                        const alreadyVoted = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
+                                        const alreadyVoted = localMvpVoted || (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
                                         const disabled = alreadyVoted || p.id === currentUser.id;
                                         return (
                                             <div key={p.id} className="relative group rounded-xl overflow-hidden border-2 border-white/10 bg-white/5 h-48">
@@ -1250,7 +1231,11 @@ const MatchInterface = () => {
                                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         disabled={disabled}
-                                                        onClick={() => voteMVP && voteMVP(p.id)}
+                                                        onClick={async () => {
+                                                            if (!voteMVP || disabled) return;
+                                                            await voteMVP(p.id);
+                                                            setLocalMvpVoted(true);
+                                                        }}
                                                         className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest ${disabled ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} shadow-lg`}
                                                     >
                                                         Pick
@@ -1261,8 +1246,11 @@ const MatchInterface = () => {
                                     })}
                                 </div>
                                 {(() => {
-                                    const myVoted = (matchState.mvpVotes || []).find(v => v.voterId === currentUser.id);
-                                    const count = (matchState.mvpVotes || []).length;
+                                    const serverVotes = (matchState.mvpVotes || []);
+                                    const voterIds = new Set(serverVotes.map(v => v.voterId));
+                                    if (localMvpVoted) voterIds.add(currentUser.id);
+                                    const myVoted = localMvpVoted || serverVotes.some(v => v.voterId === currentUser.id);
+                                    const count = voterIds.size;
                                     const total = (matchState.players || []).length;
                                     return (
                                         <div className="text-center mt-6">
