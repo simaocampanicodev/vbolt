@@ -451,12 +451,10 @@ const MatchInterface = () => {
                                                                     </div>
 
                                                                 </div>
-
-                                                                {/* Hover Effect Line */}
-                                                                {isMyTurn && (
-                                                                    <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-rose-500 to-purple-500 w-0 group-hover:w-full transition-all duration-500"></div>
-                                                                )}
                                                             </div>
+                                                            {isMyTurn && (
+                                                                <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-rose-500 to-purple-500 w-0 group-hover:w-full transition-all duration-500"></div>
+                                                            )}
                                                             {/* Centered PICK button */}
                                                             {isMyTurn && (
                                                                 <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -550,8 +548,8 @@ const MatchInterface = () => {
                                 </div>
 
                                 {/* Map Grid - Enhanced Vertical Cards */}
-                                <div className="flex-1 p-4 overflow-y-auto">
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 max-w-7xl mx-auto overflow-y-auto">
+                                <div className="flex-1 px-6 py-4 overflow-y-auto overflow-x-visible">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 max-w-7xl mx-auto overflow-visible">
                                         {allMaps.map((map) => {
                                             const bannedInfo = bannedMaps.find((b: any) => b.map === map);
                                             const isBanned = !!bannedInfo;
@@ -564,7 +562,7 @@ const MatchInterface = () => {
                                                     className={`
                                                 relative group transition-all duration-300 ease-out
                                                 ${isBanned
-                                                            ? 'opacity-50 scale-95 cursor-not-allowed'
+                                                            ? 'opacity-60 cursor-not-allowed'
                                                             : isWinning
                                                                 ? 'ring-2 ring-emerald-500 scale-105 shadow-lg shadow-emerald-500/20'
                                                                 : isMyTurn && isRemaining
@@ -576,7 +574,7 @@ const MatchInterface = () => {
                                                     <div className={`
                                                 relative h-44 rounded-xl border-2 overflow-hidden transition-all duration-300
                                                 ${isBanned
-                                                            ? 'border-red-500/40 bg-red-900/20'
+                                                            ? 'border-white/10 bg-black/30'
                                                             : isWinning
                                                                 ? 'border-emerald-500 bg-emerald-950/20'
                                                                 : 'border-white/20 bg-white/5 hover:border-rose-500 hover:bg-rose-500/10'}
@@ -585,12 +583,12 @@ const MatchInterface = () => {
                                                         <img
                                                             src={MAP_IMAGES[map as keyof typeof MAP_IMAGES]}
                                                             alt={map}
-                                                            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${isBanned ? 'opacity-20 grayscale' : 'opacity-80 group-hover:opacity-90'
+                                                            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${isBanned ? 'opacity-35 grayscale' : 'opacity-80 group-hover:opacity-90'
                                                                 }`}
                                                         />
 
                                                         {/* Overlay */}
-                                                        <div className={`absolute inset-0 transition-all duration-300 ${isBanned ? 'bg-red-900/80' : 'bg-gradient-to-t from-black/90 via-black/50 to-transparent'
+                                                        <div className={`absolute inset-0 transition-all duration-300 ${isBanned ? 'bg-black/70' : 'bg-gradient-to-t from-black/90 via-black/50 to-transparent'
                                                             }`}>
                                                             {/* Vertical Map Name */}
                                                             <div className="absolute inset-x-0 top-3 flex justify-center">
@@ -606,7 +604,7 @@ const MatchInterface = () => {
                                                                     <span className={`
                                                                 text-sm font-bold block
                                                                 ${isBanned
-                                                                            ? 'text-red-400'
+                                                                            ? 'text-zinc-200'
                                                                             : isWinning
                                                                                 ? 'text-emerald-400'
                                                                                 : 'text-white'}
@@ -628,8 +626,8 @@ const MatchInterface = () => {
                                                                     {/* Banned Status */}
                                                                     {isBanned && (
                                                                         <div className="text-center">
-                                                                            <span className="text-xs text-red-300 font-bold">BANNED</span>
-                                                                            <div className="text-[9px] text-red-400/70 mt-0.5">by {bannedInfo.bannedByName}</div>
+                                                                            <span className="text-xs text-zinc-300 font-bold">BANNED</span>
+                                                                            <div className="text-[9px] text-zinc-400/80 mt-0.5">by {bannedInfo.bannedByName}</div>
                                                                         </div>
                                                                     )}
 
@@ -1194,7 +1192,7 @@ const MatchInterface = () => {
                 {/* RIGHT: Lobby Chat (Always visible on desktop) */}
                 {!isFinished && (
                     <div className={`
-                w-full lg:w-80 lg:ml-4 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
+                w-full lg:w-72 lg:ml-4 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
                 h-full z-0
             `}>
