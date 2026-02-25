@@ -280,11 +280,9 @@ const MatchInterface = () => {
     }
 
     // --- MAIN LAYOUT ---
-    // STRICT Height Calculation to prevent Body Scroll: 100vh - Header(80px) - Padding(approx 100px total vert)
-    // We use 180px buffer. 
     return (
         <>
-            <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto h-[calc(100vh-180px)] overflow-hidden pb-24 lg:pb-0 min-h-[600px]`}>
+            <div className={`flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto lg:h-[calc(100vh-180px)] lg:overflow-hidden overflow-y-auto pb-24 lg:pb-0 min-h-[600px]`}>
 
                 {/* ⭐ NOVO: Botão Admin para sair da match */}
                 {isAdmin && (
@@ -345,11 +343,11 @@ const MatchInterface = () => {
                 )}
 
                 {/* LEFT: Game Content */}
-                <div className={`flex-1 h-full flex flex-col relative ${activeTab === 'chat' ? 'hidden lg:flex' : ''}`}>
+                <div className={`flex-1 h-full flex flex-col relative min-h-0 overflow-y-auto lg:overflow-visible ${activeTab === 'chat' ? 'hidden lg:flex' : ''}`}>
 
                     {/* --- PHASE: DRAFT (LOCKED LAYOUT) --- */}
                     {matchState.phase === MatchPhase.DRAFT && (
-                        <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
+                        <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-y-auto lg:overflow-hidden">
                             {/* Header Fixed Height */}
                             <div className="flex-none h-24 flex flex-col justify-center items-center text-center space-y-1 mb-2">
                                 <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Player Draft</h2>
@@ -530,7 +528,7 @@ const MatchInterface = () => {
                             (matchState.turn === 'B' && matchState.captainB?.id === currentUser?.id);
 
                         return (
-                            <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-hidden">
+                            <div className="h-full flex flex-col animate-in fade-in duration-500 overflow-y-auto lg:overflow-hidden">
                                 {/* Header */}
                                 <div className="flex-none p-4 border-b border-white/10">
                                     <div className="flex items-center justify-between">
