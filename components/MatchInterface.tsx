@@ -1221,6 +1221,7 @@ const MatchInterface = () => {
                                 </div>
                             );
                         }
+                        return (
                         <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-500">
                             <div className="w-full max-w-5xl mx-auto p-4">
                                 <div className="text-center mb-6">
@@ -1272,6 +1273,7 @@ const MatchInterface = () => {
                                 })()}
                             </div>
                         </div>
+                        );
                     })()}
                 </div>
 
