@@ -345,7 +345,7 @@ const MatchInterface = () => {
                 )}
 
                 {/* LEFT: Game Content */}
-                <div className="flex-1 h-full flex flex-col relative">
+                <div className={`flex-1 h-full flex flex-col relative ${activeTab === 'chat' ? 'hidden lg:flex' : ''}`}>
 
                     {/* --- PHASE: DRAFT (LOCKED LAYOUT) --- */}
                     {matchState.phase === MatchPhase.DRAFT && (
@@ -1270,10 +1270,10 @@ const MatchInterface = () => {
                     })()}
                 </div>
 
-                {/* RIGHT: Lobby Chat (Always visible on desktop) */}
-                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && (
+                {/* RIGHT: Lobby Chat (Mobile) */}
+                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && activeTab === 'chat' && (
                     <div className={`
-                w-full lg:w-72 lg:ml-4 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
+                lg:hidden w-full flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
                 h-full z-0
             `}>
@@ -1320,6 +1320,55 @@ const MatchInterface = () => {
                     </div>
                 )}
 
+                {/* RIGHT: Lobby Chat (Desktop) */}
+                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && (
+                    <div className={`
+                hidden lg:flex w-full lg:w-72 lg:ml-4 flex-shrink-0 flex-col rounded-3xl overflow-hidden border 
+                ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
+                h-full z-0
+            `}>
+                        <div className={`p-4 border-b ${themeMode === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'} flex items-center`}>
+                            <MessageSquare className="w-4 h-4 mr-2 text-rose-500" />
+                            <h3 className="text-xs font-bold uppercase tracking-widest">Lobby Chat</h3>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 lobby-chat-scroll">
+                            {matchState.chat.map(msg => (
+                                <div key={msg.id} className={`flex flex-col ${msg.isSystem ? 'items-center' : (msg.senderId === currentUser.id ? 'items-end' : 'items-start')}`}>
+                                    {msg.isSystem ? (
+                                        <div className={`text-[10px] bg-white/5 text-zinc-500 px-2 py-1 rounded-full mb-1 font-bold`}>{msg.text}</div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center space-x-2 mb-1">
+                                                <span className="text-[10px] text-zinc-500 font-bold">{msg.senderName}</span>
+                                                <span className="text-[9px] text-zinc-600">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <div className={`px-3 py-2 rounded-xl text-sm max-w-[90%] ${msg.senderId === currentUser.id ? 'bg-rose-500 text-white' : (themeMode === 'dark' ? 'bg-white/10 text-white' : 'bg-zinc-200 text-black')}`}>
+                                                {msg.text}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        <form onSubmit={handleSendMessage} className={`p-3 border-t ${themeMode === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    placeholder="Type a message..."
+                                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm outline-none transition-all ${themeMode === 'dark' ? 'bg-black/40 text-white focus:bg-black/60' : 'bg-zinc-100 text-black focus:bg-white border'}`}
+                                />
+                                <button type="submit" className="absolute right-2 top-2 p-1 text-rose-500 hover:text-rose-400 transition-colors">
+                                    <Send className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
             </div>
             <Modal
                 isOpen={showExitModal}
