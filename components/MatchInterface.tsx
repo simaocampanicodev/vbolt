@@ -367,10 +367,10 @@ const MatchInterface = () => {
                             </div>
 
                             {/* Main Grid: Fixed Height, 3 Columns */}
-                            <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden px-3 py-1">
+                            <div className="flex-1 grid grid-cols-[3fr_7fr_3fr] gap-4 overflow-visible p-1">
 
                                 {/* Team A (Left) */}
-                                <Card className="col-span-2 h-full flex flex-col border-l-4 border-l-emerald-500/50 rounded-xl overflow-hidden z-0" noPadding>
+                                <Card className="h-full flex flex-col border-l-4 border-l-emerald-500/50 rounded-xl overflow-hidden" noPadding>
                                     <div className="p-4 border-b border-white/5 bg-emerald-500/5 rounded-t-xl">
                                         <h3 className="text-emerald-400 font-display font-bold uppercase tracking-widest text-xs truncate">Team {matchState.captainA?.username}</h3>
                                     </div>
@@ -391,7 +391,7 @@ const MatchInterface = () => {
                                 </Card>
 
                                 {/* Pool or Maps (Center) */}
-                                <div className="col-span-8 h-full flex flex-col">
+                                <div className="h-full flex flex-col relative z-50">
                                     {/* Show player pool when drafting, show maps when drafting is complete */}
                                     {matchState.remainingPool.length > 0 ? (
                                         <>
@@ -406,7 +406,7 @@ const MatchInterface = () => {
                                                             key={player.id}
                                                             onClick={() => isMyTurn && draftPlayer(player)}
                                                             className={`
-                                                        relative group transition-all duration-300 cursor-pointer hover:z-20
+                                                        relative group transition-all duration-300 cursor-pointer hover:z-[999]
                                                         ${isMyTurn
                                                                     ? 'bg-gradient-to-r from-rose-500/5 via-transparent to-purple-500/5 border border-rose-500/10 hover:border-rose-500/30 hover:scale-[1.01] hover:shadow-lg hover:shadow-rose-500/5'
                                                                     : `opacity-30 cursor-not-allowed ${themeMode === 'dark' ? 'bg-black/10 border-white/5' : 'bg-black/5 border-black/5'}`}
@@ -496,7 +496,7 @@ const MatchInterface = () => {
                                 </div>
 
                                 {/* Team B (Right) */}
-                                <Card className="col-span-2 h-full flex flex-col border-r-4 border-r-rose-500/50 rounded-xl overflow-hidden z-0" noPadding>
+                                <Card className="h-full flex flex-col border-r-4 border-r-rose-500/50 rounded-xl overflow-hidden" noPadding>
                                     <div className="p-4 border-b border-white/5 bg-rose-500/5 text-right rounded-t-xl">
                                         <h3 className="text-rose-400 font-display font-bold uppercase tracking-widest text-xs truncate">Team {matchState.captainB?.username}</h3>
                                     </div>
