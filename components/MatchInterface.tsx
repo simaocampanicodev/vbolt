@@ -417,8 +417,12 @@ const MatchInterface = () => {
                                                             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 via-transparent to-purple-500/5"></div>
                                                             </div>
+                                                            {/* Darken overlay on hover */}
+                                                            {isMyTurn && (
+                                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
+                                                            )}
 
-                                                            <div className="relative z-10">
+                                                            <div className="relative z-0">
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center space-x-3">
                                                                         {/* Avatar */}
@@ -446,14 +450,6 @@ const MatchInterface = () => {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Action Button */}
-                                                                    {isMyTurn && (
-                                                                        <div className="opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                                                            <div className="px-2.5 py-1 bg-rose-500 text-white text-[10px] font-bold rounded-full shadow-lg">
-                                                                                DRAFT
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
                                                                 </div>
 
                                                                 {/* Hover Effect Line */}
@@ -461,6 +457,14 @@ const MatchInterface = () => {
                                                                     <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-rose-500 to-purple-500 w-0 group-hover:w-full transition-all duration-500"></div>
                                                                 )}
                                                             </div>
+                                                            {/* Centered PICK button */}
+                                                            {isMyTurn && (
+                                                                <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                                    <div className="px-4 py-2 bg-rose-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg">
+                                                                        Pick
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -560,11 +564,11 @@ const MatchInterface = () => {
                                                     className={`
                                                 relative group transition-all duration-300 ease-out
                                                 ${isBanned
-                                                            ? 'opacity-40 scale-95 cursor-not-allowed'
+                                                            ? 'opacity-50 scale-95 cursor-not-allowed'
                                                             : isWinning
                                                                 ? 'ring-2 ring-emerald-500 scale-105 shadow-lg shadow-emerald-500/20'
                                                                 : isMyTurn && isRemaining
-                                                                    ? 'hover:scale-x-110 hover:scale-y-105 hover:z-20 cursor-pointer hover:shadow-xl hover:shadow-rose-500/10'
+                                                                    ? 'hover:scale-x-110 hover:scale-y-105 hover:z-[40] cursor-pointer hover:shadow-xl hover:shadow-rose-500/10'
                                                                     : 'opacity-70'}
                                             `}
                                                 >
@@ -572,7 +576,7 @@ const MatchInterface = () => {
                                                     <div className={`
                                                 relative h-44 rounded-xl border-2 overflow-hidden transition-all duration-300
                                                 ${isBanned
-                                                            ? 'border-red-500/50 bg-red-950/30'
+                                                            ? 'border-red-500/40 bg-red-900/20'
                                                             : isWinning
                                                                 ? 'border-emerald-500 bg-emerald-950/20'
                                                                 : 'border-white/20 bg-white/5 hover:border-rose-500 hover:bg-rose-500/10'}
@@ -1190,9 +1194,9 @@ const MatchInterface = () => {
                 {/* RIGHT: Lobby Chat (Always visible on desktop) */}
                 {!isFinished && (
                     <div className={`
-                w-full lg:w-80 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
+                w-full lg:w-80 lg:ml-4 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
-                h-full
+                h-full z-0
             `}>
                         <div className={`p-4 border-b ${themeMode === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'} flex items-center`}>
                             <MessageSquare className="w-4 h-4 mr-2 text-rose-500" />
