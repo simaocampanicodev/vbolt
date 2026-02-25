@@ -1214,7 +1214,7 @@ const MatchInterface = () => {
                                         const alreadyVoted = localMvpVoted || (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
                                         const disabled = alreadyVoted || p.id === currentUser.id;
                                         return (
-                                            <div key={p.id} className="relative group rounded-xl overflow-hidden border-2 border-white/10 bg-white/5 h-48">
+                                            <div key={p.id} className="relative group rounded-xl overflow-hidden border-2 border-white/10 bg-white/5 h-48 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-400/40">
                                                 <div className="absolute inset-0">
                                                     {p.avatarUrl ? (
                                                         <img src={p.avatarUrl} alt={p.username} className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity" />
