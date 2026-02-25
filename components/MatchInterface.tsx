@@ -12,7 +12,7 @@ import { MAP_IMAGES, MAPS } from '../constants';
 import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User, Copy, Lock, Crown, Save, Check } from 'lucide-react';
 
 const MatchInterface = () => {
-    const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted, showToast } = useGame();
+    const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted, showToast, voteMVP } = useGame();
     const [timeLeft, setTimeLeft] = useState(0);
 
     // Mobile UI State
@@ -1187,10 +1187,91 @@ const MatchInterface = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* --- PHASE: MVP VOTE --- */}
+                    {matchState.phase === MatchPhase.MVP_VOTE && (() => {
+                        const hasVotedMVP = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
+                        if (hasVotedMVP) {
+                            return (
+                                <div className="h-full flex flex-col items-center space-y-12 animate-in zoom-in duration-500 pt-12 pb-24 w-full">
+                                    <div className="text-center">
+                                        <Trophy className={`w-24 h-24 mx-auto ${matchState.winner === userTeam ? 'text-emerald-500' : 'text-rose-500'}`} />
+                                        <h1 className={`text-8xl font-display font-bold mt-6 mb-4 tracking-tighter ${resultColor}`}>{resultTitle}</h1>
+                                        {(() => {
+                                            const myChange = matchState.playerPointsChanges?.find(p => p.playerId === currentUser.id);
+                                            const pointsChange = myChange?.pointsChange ?? currentUser.lastPointsChange;
+                                            if (pointsChange === undefined) return null;
+                                            return (
+                                                <div className={`text-2xl font-bold font-mono mb-4 ${pointsChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {pointsChange >= 0 ? '+' : ''}{pointsChange} MMR
+                                                </div>
+                                            );
+                                        })()}
+                                        <p className="text-sm text-zinc-400 font-bold tracking-widest">WINNER: TEAM {matchState.winner === 'A' ? matchState.captainA?.username.toUpperCase() : matchState.captainB?.username.toUpperCase()}</p>
+                                        <div className="mt-4 text-4xl font-mono font-bold text-white bg-white/5 px-6 py-3 rounded-3xl border border-white/10 inline-block">
+                                            {matchState.reportA ? `${matchState.reportA.scoreA} - ${matchState.reportA.scoreB}` : ''}
+                                        </div>
+                                        <div className="mt-6 text-xs text-zinc-500 uppercase tracking-widest">Waiting for MVP votes to be completed…</div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-500">
+                            <div className="w-full max-w-5xl mx-auto p-4">
+                                <div className="text-center mb-6">
+                                    <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Choose the MVP</h2>
+                                    <p className="text-xs uppercase tracking-widest text-zinc-500 mt-1">Vote for the most valuable player</p>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 place-items-stretch">
+                                    {matchState.players.map(p => {
+                                        const alreadyVoted = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
+                                        const disabled = alreadyVoted || p.id === currentUser.id;
+                                        return (
+                                            <div key={p.id} className="relative group rounded-xl overflow-hidden border-2 border-white/10 bg-white/5 h-48">
+                                                <div className="absolute inset-0">
+                                                    {p.avatarUrl ? (
+                                                        <img src={p.avatarUrl} alt={p.username} className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity" />
+                                                    ) : (
+                                                        <div className="w-full h-full grid place-items-center bg-black/40">
+                                                            <span className="text-4xl font-bold text-white">{p.username[0].toUpperCase()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+                                                <div className="absolute inset-x-0 bottom-0 p-3 text-center">
+                                                    <div className="text-white font-bold">{p.username}</div>
+                                                </div>
+                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        disabled={disabled}
+                                                        onClick={() => voteMVP && voteMVP(p.id)}
+                                                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest ${disabled ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} shadow-lg`}
+                                                    >
+                                                        Pick
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {(() => {
+                                    const myVoted = (matchState.mvpVotes || []).find(v => v.voterId === currentUser.id);
+                                    const count = (matchState.mvpVotes || []).length;
+                                    const total = (matchState.players || []).length;
+                                    return (
+                                        <div className="text-center mt-6">
+                                            <div className="text-xs text-zinc-400">{count} / {total} votes submitted</div>
+                                            {myVoted && <div className="text-[11px] text-emerald-400 font-bold mt-1">You voted</div>}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    })()}
                 </div>
 
                 {/* RIGHT: Lobby Chat (Always visible on desktop) */}
-                {!isFinished && (
+                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && (
                     <div className={`
                 w-full lg:w-72 lg:ml-4 flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 

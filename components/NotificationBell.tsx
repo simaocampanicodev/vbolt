@@ -14,6 +14,7 @@ const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
   COMMEND_RECEIVED: <Star className="w-4 h-4 text-yellow-400" />,
   SUGGESTION_LIKED: <Heart className="w-4 h-4 text-pink-400" />,
   FRIEND_MESSAGE: <MessageCircle className="w-4 h-4 text-cyan-400" />,
+  MVP_AWARDED: <Star className="w-4 h-4 text-emerald-400" />,
 };
 
 const TYPE_BG: Record<NotificationType, string> = {
@@ -27,6 +28,7 @@ const TYPE_BG: Record<NotificationType, string> = {
   COMMEND_RECEIVED: 'bg-yellow-500/10',
   SUGGESTION_LIKED: 'bg-pink-500/10',
   FRIEND_MESSAGE: 'bg-cyan-500/10',
+  MVP_AWARDED: 'bg-emerald-500/10',
 };
 
 /** Map a notification type to the view where its content lives */
@@ -46,6 +48,8 @@ function getTargetView(type: NotificationType): string | null {
     case 'MATCH_ENDED':
       return 'history';
     case 'COMMEND_RECEIVED':
+      return 'profile';
+    case 'MVP_AWARDED':
       return 'profile';
     default:
       return null;
