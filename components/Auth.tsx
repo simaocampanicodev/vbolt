@@ -8,7 +8,7 @@ import { GameRole } from '../types';
 import { AlertTriangle } from 'lucide-react';
 
 const Auth = () => {
-    const { completeRegistration, themeMode, pendingAuthUser, allUsers } = useGame();
+    const { completeRegistration, themeMode, pendingAuthUser, allUsers, logout } = useGame();
 
     // Auth Flow State
     const [step, setStep] = useState<'start' | 'registration_details'>('start');
@@ -137,9 +137,19 @@ const Auth = () => {
 
                     {step === 'registration_details' && (
                         <form onSubmit={handleRegistrationSubmit} className="space-y-6">
-                            <div className="mb-8">
-                                <h1 className="text-3xl font-display font-bold mb-2">Complete Profile</h1>
-                                <p className="text-zinc-400">Set up your Valorant identity</p>
+                            <div className="mb-8 flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-3xl font-display font-bold mb-2">Complete Profile</h1>
+                                    <p className="text-zinc-400">Set up your Valorant identity</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => { logout(); setStep('start'); setRegAgents([]); setRegUsername(''); }}
+                                    className={`px-3 py-2 rounded-xl text-sm font-bold uppercase tracking-wider border ${themeMode === 'dark' ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200'}`}
+                                    title="Sign out and switch account"
+                                >
+                                    Sign out
+                                </button>
                             </div>
 
                             <div className="space-y-5">
