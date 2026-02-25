@@ -63,6 +63,13 @@ const MatchInterface = () => {
         }
     }, [matchState?.phase, matchState?.startTime]);
 
+    // Mobile: garantir que na fase de MVP mostramos sempre o "Game" (votação)
+    useEffect(() => {
+        if (matchState?.phase === MatchPhase.MVP_VOTE) {
+            setActiveTab('game');
+        }
+    }, [matchState?.phase]);
+
     if (!matchState) return null;
 
     const isCaptain = matchState.captainA?.id === currentUser.id || matchState.captainB?.id === currentUser.id;
@@ -343,7 +350,7 @@ const MatchInterface = () => {
                 )}
 
                 {/* LEFT: Game Content */}
-                <div className={`flex-1 h-full flex flex-col relative min-h-0 overflow-y-auto lg:overflow-visible ${activeTab === 'chat' ? 'hidden lg:flex' : ''}`}>
+                <div className={`flex-1 h-full flex flex-col relative min-h-0 overflow-y-auto lg:overflow-visible ${activeTab === 'chat' && matchState.phase !== MatchPhase.MVP_VOTE ? 'hidden lg:flex' : ''}`}>
 
                     {/* --- PHASE: DRAFT (LOCKED LAYOUT) --- */}
                     {matchState.phase === MatchPhase.DRAFT && (
@@ -668,7 +675,7 @@ const MatchInterface = () => {
 
                     {/* --- PHASE: LIVE (LAYOUT INSPIRADO NA IMAGEM) --- */}
                     {matchState.phase === MatchPhase.LIVE && (
-                        <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-700 max-w-6xl mx-auto w-full p-2 overflow-hidden">
+                        <div className="h-full flex flex-col space-y-4 animate-in fade-in duration-700 max-w-6xl mx-auto w-full p-2 overflow-y-auto">
                             {/* Map + Teams + Match Code */}
                             <div className="relative rounded-3xl overflow-hidden border border-white/5 py-8 px-6 md:px-10 bg-black shrink-0">
                                 {matchState.selectedMap && (
