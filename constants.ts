@@ -115,7 +115,7 @@ export const ROLES: GameRole[] = [
 export const INITIAL_POINTS = 1000;
 
 export const MATCH_FOUND_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
-export const READY_CHECK_SOUND = "https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3";
+export const READY_CHECK_SOUND = "https://assets.mixkit.co/active_storage/sfx/2867/2867-preview.mp3";
 
 // Faceit-inspired ranking system with Valorant rank names
 export const RANK_THRESHOLDS = [

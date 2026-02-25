@@ -31,7 +31,6 @@ import {
 import {
   INITIAL_POINTS,
   MAPS,
-  MATCH_FOUND_SOUND,
   READY_CHECK_SOUND,
   QUEST_POOL,
 } from "../constants";
@@ -938,7 +937,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       try {
         console.log("🔊 Tocando som de match encontrada...");
         const audio = new Audio(READY_CHECK_SOUND);
-        audio.volume = 0.2;
+        audio.volume = 0.15;
         audio.play().catch((e) => console.log("⚠️ Navegador bloqueou som:", e));
         soundPlayedRef.current[matchState.id] = true;
       } catch (e) {
@@ -1070,13 +1069,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("✅ Queue limpa!");
 
-      // Tocar som
-      try {
-        new Audio(MATCH_FOUND_SOUND).play();
-        console.log("🔊 Som tocado");
-      } catch (e) {
-        console.log("⚠️ Erro ao tocar som");
-      }
+      // Som de ready será tocado pelo efeito de READY_CHECK; não tocar aqui
 
       console.log("========================================");
       console.log("✅ MATCH CRIADA COM SUCESSO!");
