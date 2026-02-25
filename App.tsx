@@ -16,7 +16,7 @@ import Home from './components/Home';
 import { ToastContainer } from './components/ui/Toast';
 
 const AppContent = () => {
-  const { matchState, isAuthenticated, viewProfileId, setViewProfileId, toasts, removeToast, themeMode, hasDashboardAccess } = useGame();
+  const { matchState, isAuthenticated, authResolved, viewProfileId, setViewProfileId, toasts, removeToast, themeMode, hasDashboardAccess } = useGame();
   const [currentView, setCurrentView] = useState('home');
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
 
@@ -41,6 +41,19 @@ const AppContent = () => {
       setPendingMatchId(null);
     }
   };
+
+  if (!authResolved) {
+    return (
+      <Layout currentView="loading" setCurrentView={() => { }}>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 border-4 border-zinc-800 border-t-rose-500 rounded-full animate-spin mb-3"></div>
+            <div className={`text-sm ${themeMode === 'dark' ? 'text-zinc-500' : 'text-zinc-600'}`}>Loading...</div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

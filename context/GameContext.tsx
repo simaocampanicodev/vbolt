@@ -87,6 +87,7 @@ interface RegisterData {
 
 export interface GameContextType {
   isAuthenticated: boolean;
+  authResolved: boolean;
   isAdmin: boolean;
   /** txger. or role owner/mod/dev can access dashboard */
   hasDashboardAccess: boolean;
@@ -183,6 +184,7 @@ const initialUser: User = {
 
 export const GameContext = React.createContext<GameContextType>({
   isAuthenticated: false,
+  authResolved: false,
   isAdmin: false,
   hasDashboardAccess: false,
   completeRegistration: async () => { },
@@ -246,6 +248,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(initialUser);
   const [pendingAuthUser, setPendingAuthUser] = useState<FirebaseUser | null>(
     null,
@@ -907,9 +910,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
             setCurrentUser({ ...existingUser, level });
             setIsAuthenticated(true);
             setPendingAuthUser(null);
+            setAuthResolved(true);
           } else {
             setPendingAuthUser(firebaseUser);
             setIsAuthenticated(false);
+            setAuthResolved(true);
           }
         };
         allUsersRef.current.length > 0
@@ -919,6 +924,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         setIsAuthenticated(false);
         setPendingAuthUser(null);
         setCurrentUser(initialUser);
+        setAuthResolved(true);
       }
     });
     return () => unsubscribe();
@@ -2854,6 +2860,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         resetDailyQuests,
         updateTicket,
         notifications,
+      authResolved,
         markNotificationRead,
         markAllNotificationsRead,
         clearAllNotifications,
