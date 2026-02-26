@@ -159,7 +159,6 @@ export interface GameContextType {
   clearAllNotifications: () => Promise<void>;
   clearNotificationsByType: (type: AppNotification['type'], relatedUserId?: string) => Promise<void>;
   createNotification: (targetUserId: string, type: AppNotification['type'], message: string, data?: AppNotification['data']) => Promise<void>;
-  voteMVP?: (votedId: string) => Promise<void>;
 }
 
 const initialUser: User = {
@@ -242,7 +241,6 @@ export const GameContext = React.createContext<GameContextType>({
   clearNotificationsByType: async () => { },
   createNotification: async () => { },
   enableMatchHistory: () => { },
-  voteMVP: async () => { },
 });
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({
@@ -1436,25 +1434,34 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       scoreA: finalScore.scoreA,
       scoreB: finalScore.scoreB,
     };
-    console.log("📡 Enviando atualização para active_matches (MVP_VOTE)...");
+    console.log("📡 Enviando atualização final para active_matches...");
     await updateMatch({
-      phase: MatchPhase.MVP_VOTE,
+      phase: MatchPhase.FINISHED,
       winner,
       resultReported: true,
-      resultProcessed: false,
+      resultProcessed: false, // backend must set to true after applying points
       playerPointsChanges: pointsChanges,
       reportA: scoreResult,
       reportB: scoreResult,
     });
-    console.log("➡️ Aguardando votação de MVP antes de finalizar");
+    console.log("✅ Match finalizada e enviando para todos os jogadores");
+    try {
+      await fetch('/api/process-match-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: matchState.id })
+      });
+    } catch (e) {
+      console.warn('process-match-result call failed:', e);
+    }
 
     // ⭐ Atualizar estado local imediatamente para refletir mudanças de pontos
-    console.log("🔄 Atualizando estado local do matchState para MVP_VOTE...");
+    console.log("🔄 Atualizando estado local do matchState para FINISHED...");
     setMatchState((prev) =>
       prev
         ? {
           ...prev,
-          phase: MatchPhase.MVP_VOTE,
+          phase: MatchPhase.FINISHED,
           winner,
           resultReported: true,
           resultProcessed: false,
@@ -1466,12 +1473,34 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     );
 
     // Atualizar feedback local do utilizador actual (imediato) para mostrar +/− MMR
-    // Não aplicar pontos ainda — aplicação ocorre após MVP
+    const myChange = pointsChanges.find((p) => p.playerId === currentUser.id);
+    if (myChange) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        lastPointsChange: myChange.pointsChange,
+        points: myChange.newTotal,
+      }));
+    }
 
-    console.log("✅ Estado local atualizado - MVP vote deve aparecer");
+    console.log("✅ Estado local atualizado - match ended screen deve aparecer");
 
     // ⭐ Deleção do documento deve ser feita pelo backend; só admin pode apagar client-side
-    // Limpeza será feita após finalizar com MVP
+    setTimeout(async () => {
+      try {
+        if (isAdmin) {
+          console.log(
+            "🗑️ Admin - deletando match do Firestore após 60 segundos",
+          );
+          await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+        } else {
+          console.log(
+            "ℹ️ Não é admin — a limpeza do doc ficará a cargo do backend",
+          );
+        }
+      } catch (err) {
+        console.warn("⚠️ Falha ao deletar match (ignorado):", err);
+      }
+    }, 60000);
   };
 
   // [Quests code continua igual...]
@@ -1993,12 +2022,37 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     try {
       console.log("🚪 Admin saindo da match...");
 
-      // Deletar a match ativa
-      await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+      const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id);
+      const remainingPlayers = (matchState.players || []).filter(
+        (p) => p.id !== currentUser.id,
+      );
+      const remainingPlayerIds = remainingPlayers.map((p) => p.id);
+      const newTeamA = (matchState.teamA || []).filter(
+        (p) => p.id !== currentUser.id,
+      );
+      const newTeamB = (matchState.teamB || []).filter(
+        (p) => p.id !== currentUser.id,
+      );
+      const newRemainingPool = (matchState.remainingPool || []).filter(
+        (p) => p.id !== currentUser.id,
+      );
+      const newCaptainA =
+        matchState.captainA?.id === currentUser.id ? null : matchState.captainA;
+      const newCaptainB =
+        matchState.captainB?.id === currentUser.id ? null : matchState.captainB;
 
-      console.log("✅ Match deletada! Voltando ao lobby...");
+      await updateDoc(matchRef, {
+        players: remainingPlayerIds,
+        teamA: newTeamA.map((p) => p.id),
+        teamB: newTeamB.map((p) => p.id),
+        remainingPool: newRemainingPool.map((p) => p.id),
+        captainA: newCaptainA ? newCaptainA.id : null,
+        captainB: newCaptainB ? newCaptainB.id : null,
+        updatedAt: serverTimestamp(),
+      });
 
-      // O listener vai detectar a deleção e atualizar o estado
+      console.log("✅ Admin removido da match. Voltando ao lobby...");
+
       setMatchState(null);
       currentMatchIdRef.current = null;
 
@@ -2275,7 +2329,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       console.log(
-        "🎉 Consenso alcançado no servidor — finalização parcial (MVP_VOTE)",
+        "🎉 Consenso alcançado no servidor — finalizando match agora",
       );
       await finalizeMatch({
         scoreA: consensusResult.scoreA,
@@ -2296,107 +2350,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     };
   };
 
-  const submitMvpVote = async (votedId: string) => {
-    if (!matchState || matchState.phase !== MatchPhase.MVP_VOTE) return;
-    if ((matchState.mvpVotes || []).some(v => v.voterId === currentUser.id)) {
-      showToast("You have already voted for MVP.", "info");
-      return;
-    }
-    if (votedId === currentUser.id) {
-      showToast("You cannot vote for yourself.", "warning");
-      return;
-    }
-    const vote = { voterId: currentUser.id, votedId };
-    try {
-      await updateDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id), {
-        mvpVotes: arrayUnion(vote),
-        updatedAt: serverTimestamp(),
-      });
-      // Atualizar localmente para refletir imediatamente e trocar para o ecrã de fim
-      setMatchState(prev => prev ? { ...prev, mvpVotes: [ ...(prev.mvpVotes || []), vote ] } : prev);
-    } catch (e) {
-      console.error("submitMvpVote failed:", e);
-      showToast("Failed to submit MVP vote.", "error");
-      return;
-    }
-
-    const snap = await getDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
-    if (!snap.exists()) return;
-    const data: any = snap.data();
-    const allVotes: { voterId: string; votedId: string }[] = data.mvpVotes || [];
-    const REQUIRED_VOTES = (matchState.players || []).length;
-    if (allVotes.length < REQUIRED_VOTES) {
-      showToast("MVP vote submitted. Waiting for other players...", "success");
-      return;
-    }
-
-    const counts = new Map<string, number>();
-    allVotes.forEach(v => {
-      counts.set(v.votedId, (counts.get(v.votedId) || 0) + 1);
-    });
-    let topCount = 0;
-    counts.forEach((count) => { if (count > topCount) topCount = count; });
-    const topCandidates = Array.from(counts.entries()).filter(([_, c]) => c === topCount).map(([pid]) => pid);
-    // Critério de empate: aleatório entre os mais votados
-    const topId = topCandidates.length > 0 ? topCandidates[Math.floor(Math.random() * topCandidates.length)] : null;
-    if (!topId) {
-      await updateMatch({ phase: MatchPhase.FINISHED });
-      return;
-    }
-
-    const targetUser = allUsers.find(u => u.id === topId);
-    console.log("🏆 MVP winner:", targetUser?.username, "votes:", topCount);
-
-    const baseChanges = matchState.playerPointsChanges || [];
-    const existing = baseChanges.find(p => p.playerId === topId);
-    let updatedChanges = baseChanges;
-    if (existing) {
-      updatedChanges = baseChanges.map(p =>
-        p.playerId === topId
-          ? {
-            ...p,
-            pointsChange: p.pointsChange + 5,
-            newTotal: p.newTotal + 5,
-          }
-          : p,
-      );
-    } else if (targetUser) {
-      updatedChanges = [
-        ...baseChanges,
-        {
-          playerId: targetUser.id,
-          playerName: targetUser.username,
-          pointsChange: 5,
-          newTotal: Math.round(targetUser.points ?? 0) + 5,
-          isWinner: false,
-        },
-      ];
-    }
-
-    await updateMatch({
-      phase: MatchPhase.FINISHED,
-      playerPointsChanges: updatedChanges,
-      mvpWinnerId: topId,
-    });
-
-    try {
-      await fetch('/api/process-match-result', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId: matchState.id })
-      });
-    } catch (e) {
-      console.warn('process-match-result call failed:', e);
-    }
-
-    await createNotification(
-      topId,
-      "MVP_AWARDED",
-      "You have been voted MVP and earned +5 MMR!",
-    );
-
-    showToast("MVP selected! Final results applied.", "success");
-  };
 
   const sendFriendRequest = async (toId: string) => {
     try {
@@ -2929,7 +2882,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
         clearAllNotifications,
         clearNotificationsByType,
         createNotification,
-        voteMVP: submitMvpVote,
       enableMatchHistory: (enabled: boolean) => setMatchHistoryEnabled(enabled),
       }}
     >

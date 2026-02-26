@@ -145,7 +145,6 @@ export enum MatchPhase {
   DRAFT = 'DRAFT',
   VETO = 'VETO',
   LIVE = 'LIVE',
-  MVP_VOTE = 'MVP_VOTE',
   FINISHED = 'FINISHED'
 }
 
@@ -212,8 +211,6 @@ export interface MatchState {
   readyPlayers: string[];
   readyExpiresAt?: number;
   chat: ChatMessage[];
-  mvpVotes?: { voterId: string; votedId: string }[];
-  mvpWinnerId?: string | null;
 }
 
 export interface PlayerSnapshot {
@@ -250,8 +247,7 @@ export type NotificationType =
   | 'MATCH_ENDED'
   | 'COMMEND_RECEIVED'
   | 'SUGGESTION_LIKED'
-  | 'FRIEND_MESSAGE'
-  | 'MVP_AWARDED';
+  | 'FRIEND_MESSAGE';
 
 export interface AppNotification {
   id: string;

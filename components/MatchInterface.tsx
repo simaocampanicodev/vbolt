@@ -12,7 +12,7 @@ import { MAP_IMAGES, MAPS } from '../constants';
 import { Trophy, Clock, Ban, AlertTriangle, MessageSquare, Send, ThumbsUp, Flag, X, User, Copy, Lock, Crown, Save, Check } from 'lucide-react';
 
 const MatchInterface = () => {
-    const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted, showToast, voteMVP } = useGame();
+    const { matchState, acceptMatch, draftPlayer, vetoMap, reportResult, sendChatMessage, currentUser, resetMatch, forceTimePass, exitMatchToLobby, handleBotAction, themeMode, isAdmin, commendPlayer, submitReport, matchInteractions, markPlayerAsInteracted, showToast } = useGame();
     const [timeLeft, setTimeLeft] = useState(0);
 
     // Mobile UI State
@@ -37,7 +37,6 @@ const MatchInterface = () => {
     const [showCreatingMatch, setShowCreatingMatch] = useState(false);
     const [showWinningMapPhase, setShowWinningMapPhase] = useState<'none' | 'highlight' | 'creating'>('none');
     const [readyProgress, setReadyProgress] = useState(0);
-    const [localMvpVoted, setLocalMvpVoted] = useState(false);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,20 +63,12 @@ const MatchInterface = () => {
         }
     }, [matchState?.phase, matchState?.startTime]);
 
-    // Mobile: garantir que na fase de MVP mostramos sempre o "Game" (votação)
-    useEffect(() => {
-        if (matchState?.phase === MatchPhase.MVP_VOTE) {
-            setActiveTab('game');
-        }
-    }, [matchState?.phase]);
-
     if (!matchState) return null;
 
     const isCaptain = matchState.captainA?.id === currentUser.id || matchState.captainB?.id === currentUser.id;
     const isMyTurn = (matchState.turn === 'A' && matchState.captainA?.id === currentUser.id) ||
         (matchState.turn === 'B' && matchState.captainB?.id === currentUser.id);
     const isFinished = matchState?.phase === MatchPhase.FINISHED;
-    const showFinishedView = isFinished || (matchState?.phase === MatchPhase.MVP_VOTE && localMvpVoted);
 
     const formatTime = (ms: number) => {
         const minutes = Math.floor(ms / 60000);
@@ -352,7 +343,7 @@ const MatchInterface = () => {
                 )}
 
                 {/* LEFT: Game Content */}
-                <div className={`flex-1 h-full flex flex-col relative min-h-0 overflow-y-auto lg:overflow-visible ${activeTab === 'chat' && matchState.phase !== MatchPhase.MVP_VOTE ? 'hidden lg:flex' : ''}`}>
+                <div className={`flex-1 h-full flex flex-col relative min-h-0 overflow-y-auto lg:overflow-visible ${activeTab === 'chat' ? 'hidden lg:flex' : ''}`}>
 
                     {/* --- PHASE: DRAFT (LOCKED LAYOUT) --- */}
                     {matchState.phase === MatchPhase.DRAFT && (
@@ -1051,7 +1042,7 @@ const MatchInterface = () => {
                     )}
 
                     {/* --- PHASE: FINISHED (SCROLLABLE) --- */}
-                    {showFinishedView && matchState && (
+                    {isFinished && matchState && (
                         <div className="h-full overflow-y-auto custom-scrollbar flex flex-col items-center space-y-12 animate-in zoom-in duration-500 pt-12 pb-24 w-full">
                             <div className="text-center">
                                 <Trophy className={`w-24 h-24 mx-auto ${matchState.winner === userTeam ? 'text-emerald-500' : 'text-rose-500'}`} />
@@ -1195,78 +1186,10 @@ const MatchInterface = () => {
                         </div>
                     )}
 
-                    {/* --- PHASE: MVP VOTE --- */}
-                    {matchState.phase === MatchPhase.MVP_VOTE && (() => {
-                        const hasVotedInState = (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
-                        const hasVotedMVP = localMvpVoted || hasVotedInState;
-                        if (hasVotedMVP) {
-                            return null;
-                        }
-                        return (
-                        <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-500">
-                            <div className="w-full max-w-5xl mx-auto p-4">
-                                <div className="text-center mb-6">
-                                    <h2 className={`text-3xl font-display font-bold uppercase tracking-widest ${themeMode === 'dark' ? 'text-white' : 'text-black'}`}>Choose the MVP</h2>
-                                    <p className="text-xs uppercase tracking-widest text-zinc-500 mt-1">Vote for the most valuable player</p>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 place-items-stretch">
-                                    {matchState.players.map(p => {
-                                        const alreadyVoted = localMvpVoted || (matchState.mvpVotes || []).some(v => v.voterId === currentUser.id);
-                                        const disabled = alreadyVoted || p.id === currentUser.id;
-                                        return (
-                                            <div key={p.id} className="relative group rounded-xl overflow-hidden border-2 border-white/10 bg-white/5 h-48 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-400/40">
-                                                <div className="absolute inset-0">
-                                                    {p.avatarUrl ? (
-                                                        <img src={p.avatarUrl} alt={p.username} className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity" />
-                                                    ) : (
-                                                        <div className="w-full h-full grid place-items-center bg-black/40">
-                                                            <span className="text-4xl font-bold text-white">{p.username[0].toUpperCase()}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-                                                <div className="absolute inset-x-0 bottom-0 p-3 text-center">
-                                                    <div className="text-white font-bold">{p.username}</div>
-                                                </div>
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        disabled={disabled}
-                                                        onClick={async () => {
-                                                            if (!voteMVP || disabled) return;
-                                                            await voteMVP(p.id);
-                                                            setLocalMvpVoted(true);
-                                                        }}
-                                                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest ${disabled ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} shadow-lg`}
-                                                    >
-                                                        Pick
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {(() => {
-                                    const serverVotes = (matchState.mvpVotes || []);
-                                    const voterIds = new Set(serverVotes.map(v => v.voterId));
-                                    if (localMvpVoted) voterIds.add(currentUser.id);
-                                    const myVoted = localMvpVoted || serverVotes.some(v => v.voterId === currentUser.id);
-                                    const count = voterIds.size;
-                                    const total = (matchState.players || []).length;
-                                    return (
-                                        <div className="text-center mt-6">
-                                            <div className="text-xs text-zinc-400">{count} / {total} votes submitted</div>
-                                            {myVoted && <div className="text-[11px] text-emerald-400 font-bold mt-1">You voted</div>}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </div>
-                        );
-                    })()}
                 </div>
 
                 {/* RIGHT: Lobby Chat (Mobile) */}
-                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && activeTab === 'chat' && (
+                {!isFinished && activeTab === 'chat' && (
                     <div className={`
                 lg:hidden w-full flex-shrink-0 flex flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
@@ -1316,7 +1239,7 @@ const MatchInterface = () => {
                 )}
 
                 {/* RIGHT: Lobby Chat (Desktop) */}
-                {!isFinished && matchState.phase !== MatchPhase.MVP_VOTE && (
+                {!isFinished && (
                     <div className={`
                 hidden lg:flex w-full lg:w-72 lg:ml-4 flex-shrink-0 flex-col rounded-3xl overflow-hidden border 
                 ${themeMode === 'dark' ? 'bg-black/20 border-white/5' : 'bg-white border-black/5'} 
