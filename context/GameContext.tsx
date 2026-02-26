@@ -1131,8 +1131,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   const startDraft = async () => {
     if (!matchState) return;
-    const sorted = [...matchState.players].sort((a, b) => b.points - a.points);
-    const [captainA, captainB, ...pool] = sorted;
+    const shuffled = [...matchState.players].sort(() => Math.random() - 0.5);
+    const [captainA, captainB, ...pool] = shuffled;
     console.log(
       "🎯 Iniciando draft. Capitães:",
       captainA.username,
@@ -1381,10 +1381,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     }
 
     console.log(
-      "ℹ️ Not updating `users` documents from the client (security rules block this).",
-    );
-    console.log(
-      "➡️ Persisting `playerPointsChanges` in match record — run a backend worker (Cloud Function) to apply changes to `users`.",
+      "🧮 Atualizando pontos e estatísticas diretamente no Firestore...",
     );
     console.log(
       "📊 Mudanças:",
@@ -1439,20 +1436,51 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
       phase: MatchPhase.FINISHED,
       winner,
       resultReported: true,
-      resultProcessed: false, // backend must set to true after applying points
+      resultProcessed: false,
       playerPointsChanges: pointsChanges,
       reportA: scoreResult,
       reportB: scoreResult,
     });
     console.log("✅ Match finalizada e enviando para todos os jogadores");
+
     try {
-      await fetch('/api/process-match-result', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId: matchState.id })
-      });
+      const updates: Promise<any>[] = [];
+      for (const w of validWinningTeam) {
+        const change = pointsChanges.find((p) => p.playerId === w.id);
+        if (!change) continue;
+        updates.push(
+          updateDoc(doc(db, COLLECTIONS.USERS, w.id), {
+            points: change.newTotal,
+            lastPointsChange: change.pointsChange,
+            wins: (w.wins ?? 0) + 1,
+            losses: w.losses ?? 0,
+            winstreak: (w.winstreak ?? 0) + 1,
+          }),
+        );
+      }
+      for (const l of validLosingTeam) {
+        const change = pointsChanges.find((p) => p.playerId === l.id);
+        if (!change) continue;
+        updates.push(
+          updateDoc(doc(db, COLLECTIONS.USERS, l.id), {
+            points: change.newTotal,
+            lastPointsChange: change.pointsChange,
+            wins: l.wins ?? 0,
+            losses: (l.losses ?? 0) + 1,
+            winstreak: 0,
+          }),
+        );
+      }
+      await Promise.all(updates);
+      await updateMatch({ resultProcessed: true });
+      console.log("✅ Estatísticas atualizadas no Firestore");
     } catch (e) {
-      console.warn('process-match-result call failed:', e);
+      console.warn("⚠️ Falha ao atualizar estatísticas no Firestore:", e);
+      showToast(
+        "Failed to update player stats in Firestore. Check permissions.",
+        "warning",
+        6000,
+      );
     }
 
     // ⭐ Atualizar estado local imediatamente para refletir mudanças de pontos
@@ -1484,17 +1512,20 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
     console.log("✅ Estado local atualizado - match ended screen deve aparecer");
 
-    // ⭐ Deleção do documento deve ser feita pelo backend; só admin pode apagar client-side
+    // ⭐ Limpeza apenas quando não houver mais jogadores
     setTimeout(async () => {
       try {
-        if (isAdmin) {
-          console.log(
-            "🗑️ Admin - deletando match do Firestore após 60 segundos",
-          );
-          await deleteDoc(doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id));
+        const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id);
+        const snap = await getDoc(matchRef);
+        if (!snap.exists()) return;
+        const data: any = snap.data();
+        const playersLeft = Array.isArray(data.players) ? data.players.length : 0;
+        if (playersLeft === 0) {
+          console.log("🗑️ Match vazia — deletando do Firestore");
+          await deleteDoc(matchRef);
         } else {
           console.log(
-            "ℹ️ Não é admin — a limpeza do doc ficará a cargo do backend",
+            `ℹ️ Match mantém ${playersLeft} jogador(es) — mantendo documento`,
           );
         }
       } catch (err) {
@@ -2007,6 +2038,46 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const removeCurrentUserFromMatch = async () => {
+    if (!matchState) return;
+    const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id);
+    const remainingPlayers = (matchState.players || []).filter(
+      (p) => p.id !== currentUser.id,
+    );
+    if (remainingPlayers.length === 0) {
+      await deleteDoc(matchRef);
+      return;
+    }
+    const remainingPlayerIds = remainingPlayers.map((p) => p.id);
+    const newTeamA = (matchState.teamA || []).filter(
+      (p) => p.id !== currentUser.id,
+    );
+    const newTeamB = (matchState.teamB || []).filter(
+      (p) => p.id !== currentUser.id,
+    );
+    const newRemainingPool = (matchState.remainingPool || []).filter(
+      (p) => p.id !== currentUser.id,
+    );
+    const newCaptainA =
+      matchState.captainA?.id === currentUser.id ? null : matchState.captainA;
+    const newCaptainB =
+      matchState.captainB?.id === currentUser.id ? null : matchState.captainB;
+    const newReadyPlayers = (matchState.readyPlayers || []).filter(
+      (id) => id !== currentUser.id,
+    );
+
+    await updateDoc(matchRef, {
+      players: remainingPlayerIds,
+      teamA: newTeamA.map((p) => p.id),
+      teamB: newTeamB.map((p) => p.id),
+      remainingPool: newRemainingPool.map((p) => p.id),
+      captainA: newCaptainA ? newCaptainA.id : null,
+      captainB: newCaptainB ? newCaptainB.id : null,
+      readyPlayers: newReadyPlayers,
+      updatedAt: serverTimestamp(),
+    });
+  };
+
   // ⭐ NOVO: Sair da match e voltar ao lobby
   const exitMatchToLobby = async () => {
     if (!isAdmin) {
@@ -2021,35 +2092,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
     try {
       console.log("🚪 Admin saindo da match...");
-
-      const matchRef = doc(db, COLLECTIONS.ACTIVE_MATCHES, matchState.id);
-      const remainingPlayers = (matchState.players || []).filter(
-        (p) => p.id !== currentUser.id,
-      );
-      const remainingPlayerIds = remainingPlayers.map((p) => p.id);
-      const newTeamA = (matchState.teamA || []).filter(
-        (p) => p.id !== currentUser.id,
-      );
-      const newTeamB = (matchState.teamB || []).filter(
-        (p) => p.id !== currentUser.id,
-      );
-      const newRemainingPool = (matchState.remainingPool || []).filter(
-        (p) => p.id !== currentUser.id,
-      );
-      const newCaptainA =
-        matchState.captainA?.id === currentUser.id ? null : matchState.captainA;
-      const newCaptainB =
-        matchState.captainB?.id === currentUser.id ? null : matchState.captainB;
-
-      await updateDoc(matchRef, {
-        players: remainingPlayerIds,
-        teamA: newTeamA.map((p) => p.id),
-        teamB: newTeamB.map((p) => p.id),
-        remainingPool: newRemainingPool.map((p) => p.id),
-        captainA: newCaptainA ? newCaptainA.id : null,
-        captainB: newCaptainB ? newCaptainB.id : null,
-        updatedAt: serverTimestamp(),
-      });
+      await removeCurrentUserFromMatch();
 
       console.log("✅ Admin removido da match. Voltando ao lobby...");
 
@@ -2597,19 +2640,18 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({
 
   const resetMatch = async () => {
     console.log("🏠 Voltando ao lobby...");
-    const matchIdToDelete = currentMatchIdRef.current;
     currentMatchIdRef.current = null;
-    setMatchState(null);
-    if (matchIdToDelete) {
-      try {
-        await deleteDoc(
-          doc(db, COLLECTIONS.ACTIVE_MATCHES, matchIdToDelete),
-        );
-        console.log("✅ Match apagada do Firestore");
-      } catch (error) {
-        console.error("❌ Erro ao apagar match:", error);
-      }
+    if (!matchState) {
+      setMatchState(null);
+      return;
     }
+    try {
+      await removeCurrentUserFromMatch();
+      console.log("✅ Saída da match concluída");
+    } catch (error) {
+      console.error("❌ Erro ao apagar match:", error);
+    }
+    setMatchState(null);
   };
 
   const forceTimePass = () => {
